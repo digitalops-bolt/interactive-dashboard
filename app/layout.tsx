@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
+import { AUTH_ENABLED } from "@/lib/auth";
+import { PostHogProvider } from "@/components/posthog-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
+  const tree = (
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
@@ -21,8 +24,11 @@ export default function RootLayout({
           inter.variable,
         )}
       >
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );
+
+  // Wrap in Clerk only when keys are present, so the app still runs pre-setup.
+  return AUTH_ENABLED ? <ClerkProvider>{tree}</ClerkProvider> : tree;
 }

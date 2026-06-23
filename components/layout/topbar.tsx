@@ -1,3 +1,6 @@
+import { UserButton } from "@clerk/nextjs";
+import { AUTH_ENABLED } from "@/lib/auth";
+
 export function Topbar() {
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -6,9 +9,13 @@ export function Topbar() {
         Management Dashboard
       </div>
       <div className="flex items-center gap-2 text-sm">
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-          F
-        </div>
+        {AUTH_ENABLED ? (
+          <UserButton afterSignOutUrl="/sign-in" />
+        ) : (
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+            F
+          </div>
+        )}
       </div>
     </header>
   );

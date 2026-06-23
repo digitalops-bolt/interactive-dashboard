@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 import {
   computeDelta,
   formatCurrency,
@@ -46,6 +47,7 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
   const [dir, setDir] = useState<"asc" | "desc">("desc");
 
   function toggle(key: SortKey) {
+    track("leaderboard_sorted", { key });
     if (key === sortKey) {
       setDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -200,6 +202,12 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
                     <Link
                       href={`/portfolios/${encodeURIComponent(r.portfolio)}`}
                       className="text-foreground hover:underline"
+                      onClick={() =>
+                        track("portfolio_opened", {
+                          portfolio: r.portfolio,
+                          source: "leaderboard",
+                        })
+                      }
                     >
                       {r.portfolio}
                     </Link>

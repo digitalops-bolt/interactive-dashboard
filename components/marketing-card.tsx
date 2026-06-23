@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 import type { AdsByType, ConversionActionRow } from "@/lib/queries/portfolio-detail";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -53,7 +54,7 @@ export function MarketingCard({
       cur.total += r.conversions;
       map.set(r.actionName, cur);
     }
-    return [...map.values()].sort((a, b) => b.total - a.total);
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [conversionRows]);
 
   const allNames = useMemo(() => actions.map((a) => a.actionName), [actions]);
@@ -66,6 +67,7 @@ export function MarketingCard({
   const [selected, setSelected] = useState<Set<string>>(() => new Set(allNames));
 
   function toggle(name: string) {
+    track("conversion_filter_changed", { action: name });
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
@@ -73,8 +75,14 @@ export function MarketingCard({
       return next;
     });
   }
-  const selectAll = () => setSelected(new Set(allNames));
-  const selectRentals = () => setSelected(new Set(purchaseNames));
+  const selectAll = () => {
+    track("conversion_filter_changed", { preset: "all" });
+    setSelected(new Set(allNames));
+  };
+  const selectRentals = () => {
+    track("conversion_filter_changed", { preset: "rentals_only" });
+    setSelected(new Set(purchaseNames));
+  };
 
   // Spend & % of revenue are constant — never affected by the conversion filter.
   const totalSpend = useMemo(
@@ -98,7 +106,7 @@ export function MarketingCard({
   // the headline. CPA is then computed from the rounded integer (see table below) so we
   // never show a cost-per-acquisition against "0" conversions.
   const totalConversions = useMemo(
-    () => [...convByChannel.values()].reduce((s, v) => s + Math.round(v), 0),
+    () => Array.from(convByChannel.values()).reduce((s, v) => s + Math.round(v), 0),
     [convByChannel],
   );
 
@@ -109,7 +117,7 @@ export function MarketingCard({
       arr.push(a);
       g.set(a.category, arr);
     }
-    return [...g.entries()];
+    return Array.from(g.entries());
   }, [actions]);
 
   const allSelected =

@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatPercent } from "@/lib/format";
+import { track } from "@/lib/analytics";
 import type { PricingGroupRow } from "@/lib/queries/portfolio-detail";
 
 type SortKey =
@@ -144,7 +145,10 @@ export function PricingGroupTable({
           </span>
           <select
             value={facility}
-            onChange={(e) => setFacility(e.target.value)}
+            onChange={(e) => {
+              track("pricing_group_filtered", { facility: e.target.value });
+              setFacility(e.target.value);
+            }}
             aria-label="Filter pricing groups by facility"
             className="h-9 min-w-[200px] cursor-pointer rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
           >

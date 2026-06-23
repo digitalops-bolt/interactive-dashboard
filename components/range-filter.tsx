@@ -7,6 +7,7 @@ import "react-day-picker/dist/style.css";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 import {
   DATA_FLOOR,
   RANGE_OPTIONS,
@@ -50,6 +51,7 @@ export function RangeFilter({ active }: { active: RangeSpec }) {
   }
 
   function applyPreset(key: string) {
+    track("range_changed", { kind: "preset", key });
     pushParams((sp) => {
       sp.set("range", key);
       sp.delete("from");
@@ -59,6 +61,11 @@ export function RangeFilter({ active }: { active: RangeSpec }) {
 
   function applyCustom() {
     if (!range?.from || !range?.to) return;
+    track("range_changed", {
+      kind: "custom",
+      from: toISO(range.from),
+      to: toISO(range.to),
+    });
     pushParams((sp) => {
       sp.set("range", "custom");
       sp.set("from", toISO(range.from!));

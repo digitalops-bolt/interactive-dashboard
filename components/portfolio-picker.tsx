@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { track } from "@/lib/analytics";
 
 export function PortfolioPicker({
   portfolios,
@@ -13,6 +14,7 @@ export function PortfolioPicker({
   const params = useSearchParams();
 
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    track("portfolio_opened", { portfolio: e.target.value, source: "picker" });
     const qs = params?.toString();
     router.push(
       `/portfolios/${encodeURIComponent(e.target.value)}${qs ? `?${qs}` : ""}`,
