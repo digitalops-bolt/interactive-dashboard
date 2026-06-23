@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code local config (machine-specific permissions)
+.claude/settings.local.json
+
+# Windows/WSL artifacts
+*:Zone.Identifier
