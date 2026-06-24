@@ -26,6 +26,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       api_host: HOST,
       capture_pageview: false, // we capture manually on route change
       capture_pageleave: true,
+      // Financial data on screen: do NOT auto-capture clicked element text/values, which
+      // could ship revenue/occupancy figures to PostHog. We send only explicit events.
+      autocapture: false,
+      disable_session_recording: true,
     });
   }, []);
 

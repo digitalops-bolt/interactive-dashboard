@@ -7,17 +7,26 @@ const isPublicRoute = createRouteMatcher([
   "/access-denied",
 ]);
 
-// When Clerk keys aren't configured yet, auth is a no-op pass-through (keeps the app
-// runnable locally before setup). With keys present, every non-public route requires login;
-// the company email-domain check lives in app/(dashboard)/layout.tsx (where currentUser() is
-// available) plus Clerk's own dashboard allowlist.
+// With Clerk keys present, every non-public route requires login; the company email-domain
+// check lives in app/(dashboard)/layout.tsx (where currentUser() is available) plus Clerk's
+// own dashboard allowlist.
+//
+// Without keys: in development we pass through (so the app is runnable before Clerk is set up),
+// but in PRODUCTION we FAIL CLOSED — refuse every request — so a missing/typo'd Clerk key can
+// never silently expose the financial dashboard to the public.
 const handler = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? clerkMiddleware(async (auth, req) => {
       if (!isPublicRoute(req)) {
         await auth.protect();
       }
     })
-  : () => NextResponse.next();
+  : () =>
+      process.env.NODE_ENV === "production"
+        ? new NextResponse(
+            "Authentication is not configured. Set the Clerk keys before serving this app.",
+            { status: 503 },
+          )
+        : NextResponse.next();
 
 export default handler;
 

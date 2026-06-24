@@ -38,5 +38,5 @@ next-env.d.ts
 # Claude Code local config (machine-specific permissions)
 .claude/settings.local.json
 
-# Windows/WSL artifacts
-*:Zone.Identifier
+# Windows/WSL artifacts (the ADS separator can be an ASCII or Unicode colon)
+*Zone.Identifier
