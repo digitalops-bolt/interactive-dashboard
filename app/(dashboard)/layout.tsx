@@ -3,20 +3,22 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { ALLOWED_EMAIL_DOMAIN, AUTH_ENABLED } from "@/lib/auth";
+import { getRole } from "@/lib/roles";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Middleware already requires a signed-in user; here we enforce the company domain
-  // (defense-in-depth with Clerk's allowlist). Skipped entirely when auth is off.
+  // Middleware already requires a signed-in user; here we enforce (a) the company domain
+  // and (b) that the user has a role at all. Onboarding is invite-only with a preset role,
+  // so no role = not granted access yet. Skipped entirely when auth is off (local dev).
   if (AUTH_ENABLED) {
     const user = await currentUser();
-    const ok = user?.emailAddresses?.some((e) =>
+    const domainOk = user?.emailAddresses?.some((e) =>
       e.emailAddress.toLowerCase().endsWith("@" + ALLOWED_EMAIL_DOMAIN.toLowerCase()),
     );
-    if (!ok) redirect("/access-denied");
+    if (!domainOk || !getRole(user)) redirect("/access-denied");
   }
 
   return (

@@ -33,7 +33,10 @@ import {
   getPricingGroupStatus,
   getUnitStatus,
 } from "@/lib/queries/portfolio-detail";
+import { currentUser } from "@clerk/nextjs/server";
 import { parseRangeSpec, prevPeriodLabel, rangeLabel } from "@/lib/metrics";
+import { AUTH_ENABLED } from "@/lib/auth";
+import { getRole, portfolioAccess } from "@/lib/roles";
 import {
   formatCurrency,
   formatDate,
@@ -86,7 +89,13 @@ export default async function PortfolioDetailPage({
   const range = parseRangeSpec(searchParams ?? {});
   const label = rangeLabel(range);
 
-  const names = await getPortfolioNames();
+  const [allNames, user] = await Promise.all([
+    getPortfolioNames(),
+    AUTH_ENABLED ? currentUser() : Promise.resolve(null),
+  ]);
+  // Role-based data gating (no-op until a role gets a portfolio allowlist in lib/roles.ts).
+  const allowed = portfolioAccess(AUTH_ENABLED ? getRole(user) : "admin");
+  const names = allowed ? allNames.filter((n) => allowed.includes(n)) : allNames;
   if (!names.includes(portfolio)) notFound();
 
   const [kpis, categories, status, facilities, ads, pricingGroups, conversionRows] =

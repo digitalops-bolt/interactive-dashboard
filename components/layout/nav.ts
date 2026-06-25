@@ -4,6 +4,7 @@ import {
   Layers,
   LayoutDashboard,
   Megaphone,
+  ShieldCheck,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -22,4 +23,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Revenue", href: "/revenue", icon: DollarSign, enabled: false },
   { label: "Marketing", href: "/marketing", icon: Megaphone, enabled: false },
   { label: "Facilities", href: "/facilities", icon: Building2, enabled: false },
+  // Visibility is gated by role via canSeeNav (admins only); hidden for everyone else.
+  { label: "Admin", href: "/admin", icon: ShieldCheck, enabled: true },
 ];

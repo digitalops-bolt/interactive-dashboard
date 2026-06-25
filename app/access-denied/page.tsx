@@ -5,9 +5,9 @@ export default function AccessDeniedPage() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
       <h1 className="text-2xl font-semibold tracking-tight">Access pending</h1>
       <p className="max-w-md text-sm text-muted-foreground">
-        Your account isn&apos;t authorized for the Bolt Storage dashboard yet. Please sign in
-        with your <span className="font-medium">@boltstorage.com</span> Google account, or ask
-        an admin to grant you access.
+        You don&apos;t have access to the Bolt Storage dashboard yet. Access is invite-only —
+        ask an admin to invite your <span className="font-medium">@boltstorage.com</span>{" "}
+        account and assign you a role.
       </p>
       <Link
         href="/sign-in"

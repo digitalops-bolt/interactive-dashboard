@@ -2,11 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/layout/nav";
+import { AUTH_ENABLED } from "@/lib/auth";
+import { canSeeNav, getRole, type Role } from "@/lib/roles";
 
+// useUser() requires a ClerkProvider, which only exists when auth is enabled. So the hook
+// lives in a child that's mounted only in that case; with auth off we render as "admin"
+// (local dev convenience — everything visible).
 export function Sidebar() {
+  return AUTH_ENABLED ? <SidebarWithRole /> : <SidebarView role="admin" />;
+}
+
+function SidebarWithRole() {
+  const { user } = useUser();
+  return <SidebarView role={getRole(user)} />;
+}
+
+function SidebarView({ role }: { role: Role | null }) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => canSeeNav(role, item.href));
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-muted/30 md:flex">
@@ -18,7 +34,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
 
           if (!item.enabled) {

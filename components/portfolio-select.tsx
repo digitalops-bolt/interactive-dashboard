@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { track } from "@/lib/analytics";
 
 export function PortfolioSelect({
   portfolios,
@@ -16,6 +17,7 @@ export function PortfolioSelect({
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const sp = new URLSearchParams(params?.toString() ?? "");
     const value = e.target.value;
+    track("occupancy_trend_filtered", { portfolio: value });
     if (value === "all") sp.delete("portfolio");
     else sp.set("portfolio", value);
     router.push(`${pathname}?${sp.toString()}`, { scroll: false });

@@ -15,7 +15,10 @@ import {
   getOverviewKpis,
   getPortfolioLeaderboard,
 } from "@/lib/queries/overview";
+import { currentUser } from "@clerk/nextjs/server";
 import { parseRangeSpec, prevPeriodLabel, rangeLabel } from "@/lib/metrics";
+import { AUTH_ENABLED } from "@/lib/auth";
+import { getRole, portfolioAccess } from "@/lib/roles";
 import {
   formatCurrency,
   formatDate,
@@ -44,13 +47,21 @@ export default async function OverviewPage({
     : searchParams?.portfolio;
   const activePortfolio = portfolioParam || "all";
 
-  const [kpis, trend, leaderboard] = await Promise.all([
+  const [kpis, trend, leaderboard, user] = await Promise.all([
     getOverviewKpis(range),
     getOccupancyTrend(activePortfolio),
     getPortfolioLeaderboard(range),
+    AUTH_ENABLED ? currentUser() : Promise.resolve(null),
   ]);
 
-  const portfolioOptions = leaderboard
+  // Role-based data gating (no-op until a role gets a portfolio allowlist in lib/roles.ts).
+  const role = AUTH_ENABLED ? getRole(user) : "admin";
+  const allowed = portfolioAccess(role);
+  const visibleLeaderboard = allowed
+    ? leaderboard.filter((r) => r.isUnmapped || allowed.includes(r.portfolio))
+    : leaderboard;
+
+  const portfolioOptions = visibleLeaderboard
     .filter((r) => !r.isUnmapped)
     .map((r) => r.portfolio)
     .sort((a, b) => a.localeCompare(b));
@@ -164,7 +175,7 @@ export default async function OverviewPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PortfolioLeaderboard rows={leaderboard} />
+          <PortfolioLeaderboard rows={visibleLeaderboard} />
         </CardContent>
       </Card>
     </div>

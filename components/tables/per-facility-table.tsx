@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { track } from "@/lib/analytics";
 import type { FacilityRow } from "@/lib/queries/portfolio-detail";
 
 type SortKey =
@@ -39,6 +40,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
   const [dir, setDir] = useState<"asc" | "desc">("desc");
 
   function toggle(key: SortKey) {
+    track("facility_table_sorted", { key });
     if (key === sortKey) {
       setDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
