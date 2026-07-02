@@ -90,10 +90,14 @@ export interface PricingGroupRow {
 const LATEST_OCC = `(SELECT MAX(date) FROM \`${A}.occupancy_daily\`)`;
 
 export async function getPortfolioNames(): Promise<string[]> {
+  // Sourced from occupancy_daily's latest snapshot (same table as the leaderboard), NOT
+  // portfolio_occ_daily — that sync silently emptied once (2026-07-02) and blanked every
+  // /portfolios route, since this list gates the [portfolio] param (empty list = notFound).
   const rows = await cachedQuery<{ portfolio: string }>(
-    `SELECT DISTINCT portfolio_name AS portfolio FROM \`${A}.portfolio_occ_daily\`
-     WHERE portfolio_name IS NOT NULL ORDER BY portfolio_name`,
-    { cacheKey: "portfolio-names" },
+    `SELECT DISTINCT portfolio_name AS portfolio FROM \`${A}.occupancy_daily\`
+     WHERE date = ${LATEST_OCC} AND portfolio_name IS NOT NULL
+     ORDER BY portfolio_name`,
+    { cacheKey: "portfolio-names-v2" },
   );
   return rows.map((r) => r.portfolio);
 }
