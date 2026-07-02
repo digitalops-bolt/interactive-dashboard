@@ -28,6 +28,11 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# internal planning/context docs — useful locally, not for the shared repo
+# (not secrets, but business/architecture context that doesn't need repo exposure)
+PLAN.md
+data_model_doc.md
+
 # vercel
 .vercel
 
