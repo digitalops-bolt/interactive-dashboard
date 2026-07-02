@@ -157,10 +157,13 @@ export async function getPortfolioLeaderboard(
   range: RangeSpec,
 ): Promise<PortfolioLeaderRow[]> {
   const pyStart = windowBounds(range, "prevYear").start;
+  const ppStart = windowBounds(range, "prevPeriod").start;
   const curAnchor = occupancyEndAnchor(range);
   const pyAnchor = comparisonAnchorDate(curAnchor, range, "prevYear");
+  const ppAnchor = comparisonAnchorDate(curAnchor, range, "prevPeriod");
   const flowGuard = `(SELECT MIN(date) FROM \`${A}.facility_daily\`) <= ${pyStart}`;
   const revGuard = `(SELECT MIN(payment_date) FROM \`${S}.payments_daily\`) <= ${pyStart}`;
+  const revGuardPp = `(SELECT MIN(payment_date) FROM \`${S}.payments_daily\`) <= ${ppStart}`;
 
   const rows = await cachedQuery<{
     portfolio: string;
@@ -177,6 +180,8 @@ export async function getPortfolioLeaderboard(
     revenue_py: number | null;
     move_ins_py: number | null;
     net_rentals_py: number | null;
+    occ_pct_pp: number | null;
+    revenue_pp: number | null;
   }>(
     `WITH occ AS (
        SELECT portfolio_name AS portfolio,
@@ -226,6 +231,20 @@ export async function getPortfolioLeaderboard(
        FROM \`${A}.occupancy_daily\`
        WHERE date = (SELECT MAX(date) FROM \`${A}.occupancy_daily\` WHERE date <= ${pyAnchor})
        GROUP BY 1
+     ),
+     occ_pp AS (
+       SELECT portfolio_name AS portfolio,
+              ROUND(SUM(occupied_units)/SUM(total_units) * 100, 1) AS occ_pct
+       FROM \`${A}.occupancy_daily\`
+       WHERE date = (SELECT MAX(date) FROM \`${A}.occupancy_daily\` WHERE date <= ${ppAnchor})
+       GROUP BY 1
+     ),
+     rev_pp AS (
+       SELECT COALESCE(portfolio, '${UNMAPPED_PORTFOLIO}') AS portfolio,
+              IF(${revGuardPp}, CAST(SUM(net_revenue) AS FLOAT64), NULL) AS revenue
+       FROM \`${S}.payments_daily\`
+       WHERE ${comparisonPredicate("payment_date", range, "prevPeriod")}
+       GROUP BY 1
      )
      SELECT
        COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio) AS portfolio,
@@ -239,13 +258,17 @@ export async function getPortfolioLeaderboard(
        occ_py.total_units AS total_units_py,
        rev_py.revenue AS revenue_py,
        flows_py.move_ins AS move_ins_py,
-       flows_py.net_rentals AS net_rentals_py
+       flows_py.net_rentals AS net_rentals_py,
+       occ_pp.occ_pct AS occ_pct_pp,
+       rev_pp.revenue AS revenue_pp
      FROM occ
      FULL OUTER JOIN mtd ON occ.portfolio = mtd.portfolio
      FULL OUTER JOIN rev ON COALESCE(occ.portfolio, mtd.portfolio) = rev.portfolio
      LEFT JOIN occ_py ON occ_py.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
      LEFT JOIN rev_py ON rev_py.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
      LEFT JOIN flows_py ON flows_py.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
+     LEFT JOIN occ_pp ON occ_pp.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
+     LEFT JOIN rev_pp ON rev_pp.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
      ORDER BY occ.occ_pct DESC NULLS LAST, move_ins DESC`,
     {
       cacheKey: "overview-portfolio-leaderboard",
@@ -270,5 +293,7 @@ export async function getPortfolioLeaderboard(
     moveInsPrevYear: num(r.move_ins_py),
     occupiedUnitsPrevYear: num(r.occupied_units_py),
     totalUnitsPrevYear: num(r.total_units_py),
+    occPctPrevPeriod: num(r.occ_pct_pp),
+    revenuePrevPeriod: num(r.revenue_pp),
   }));
 }

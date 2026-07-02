@@ -47,4 +47,7 @@ export interface PortfolioLeaderRow {
   // Year-ago unit counts (for the weighted company occupancy total in the footer).
   occupiedUnitsPrevYear: number | null;
   totalUnitsPrevYear: number | null;
+  // Prior-period (month-over-month) baselines for the briefing's best/worst deltas.
+  occPctPrevPeriod: number | null;
+  revenuePrevPeriod: number | null;
 }

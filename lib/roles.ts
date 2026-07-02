@@ -3,13 +3,14 @@
 // user's publicMetadata.role; onboarding is invite-only with a preset role, so a user with
 // NO role gets NO access (anomaly-safe default).
 
-export const ROLES = ["admin", "viewer"] as const;
+export const ROLES = ["admin", "digital-ops", "viewer"] as const;
 export type Role = (typeof ROLES)[number];
 // To add a role (e.g. "marketing", "ops"): add it here, then extend ROUTE_RULES /
 // portfolioAccess below. Enforcement picks it up with no other code changes.
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
+  "digital-ops": "Digital Ops",
   viewer: "Viewer",
 };
 
@@ -26,7 +27,8 @@ export function getRole(
 // Route-prefix → roles allowed. A path with no matching rule is open to any valid role.
 const ROUTE_RULES: { prefix: string; roles: Role[] }[] = [
   { prefix: "/admin", roles: ["admin"] },
-  // /overview, /portfolios, … → all roles (add rules here to gate more tabs)
+  { prefix: "/decision-tree", roles: ["admin", "digital-ops"] },
+  // /overview, /portfolios, /moves, … → all roles (add rules here to gate more tabs)
 ];
 
 /** Can this role load this path? (Server-enforced in the dashboard layout.) */

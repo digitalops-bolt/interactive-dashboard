@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { ALLOWED_EMAIL_DOMAIN, AUTH_ENABLED } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { getRole } from "@/lib/roles";
 
 export default async function DashboardLayout({
@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   // and (b) that the user has a role at all. Onboarding is invite-only with a preset role,
   // so no role = not granted access yet. Skipped entirely when auth is off (local dev).
   if (AUTH_ENABLED) {
-    const user = await currentUser();
+    const user = await getCurrentUser();
     const domainOk = user?.emailAddresses?.some((e) =>
       e.emailAddress.toLowerCase().endsWith("@" + ALLOWED_EMAIL_DOMAIN.toLowerCase()),
     );

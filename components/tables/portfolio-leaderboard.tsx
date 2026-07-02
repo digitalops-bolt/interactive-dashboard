@@ -171,7 +171,7 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
         <TableHeader>
           <TableRow>
             <SortHead label="Portfolio" sortKey="portfolio" align="left" />
-            <SortHead label="Occupancy" sortKey="occPct" />
+            <SortHead label="Unit occ." sortKey="occPct" />
             <TableHead className="text-right">Units</TableHead>
             <SortHead label="Revenue" sortKey="revenue" />
             <SortHead label="Move-ins" sortKey="moveIns" />

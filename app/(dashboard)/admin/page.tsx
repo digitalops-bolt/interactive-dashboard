@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { clerkClient, currentUser } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { getCurrentUser } from "@/lib/current-user";
 import {
   Card,
   CardContent,
@@ -18,6 +19,7 @@ import {
 import { AUTH_ENABLED } from "@/lib/auth";
 import { getRole, ROLES, ROLE_LABELS } from "@/lib/roles";
 import {
+  getUsageByUser,
   getUsageStats,
   POSTHOG_ADMIN_CONFIGURED,
 } from "@/lib/posthog-admin";
@@ -35,10 +37,14 @@ function fmtDate(ms: number | null | undefined): string {
 const roleSelectClass =
   "h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: { user?: string | string[] };
+}) {
   // The dashboard layout already blocks no-role users; this enforces admin-only.
   if (AUTH_ENABLED) {
-    const me = await currentUser();
+    const me = await getCurrentUser();
     if (getRole(me) !== "admin") redirect("/access-denied");
   }
 
@@ -57,13 +63,25 @@ export default async function AdminPage() {
   }
 
   const client = await clerkClient();
-  const [userList, inviteList, usage] = await Promise.all([
+  const [userList, inviteList, usageByUser] = await Promise.all([
     client.users.getUserList({ limit: 100, orderBy: "-created_at" }),
     client.invitations.getInvitationList({ status: "pending" }),
-    getUsageStats(),
+    getUsageByUser(),
   ]);
   const users = userList.data;
   const invites = inviteList.data;
+
+  // Usage can be scoped to one user. Only honor a ?user= that matches a real user (allowlist),
+  // so nothing arbitrary ever reaches the analytics query.
+  const requestedUserId = Array.isArray(searchParams?.user)
+    ? searchParams.user[0]
+    : searchParams?.user;
+  const selectedUser = users.find((u) => u.id === requestedUserId);
+  const usage = await getUsageStats({ distinctId: selectedUser?.id });
+  const emailOf = (u: (typeof users)[number]) =>
+    u.emailAddresses.find((e) => e.id === u.primaryEmailAddressId)?.emailAddress ??
+    u.emailAddresses[0]?.emailAddress ??
+    u.id;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -233,9 +251,43 @@ export default async function AdminPage() {
 
       {/* Usage (PostHog) */}
       <Card>
-        <CardHeader>
-          <CardTitle>Usage · last 30 days</CardTitle>
-          <CardDescription>From PostHog — which tabs and actions get used</CardDescription>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <CardTitle>
+              Usage · last 30 days
+              {selectedUser ? ` · ${emailOf(selectedUser)}` : ""}
+            </CardTitle>
+            <CardDescription>
+              From PostHog — which tabs and actions get used
+              {selectedUser ? " (scoped to the selected user)" : ""}
+            </CardDescription>
+          </div>
+          {POSTHOG_ADMIN_CONFIGURED ? (
+            <form method="get" className="flex items-center gap-2">
+              <label htmlFor="user" className="sr-only">
+                Filter by user
+              </label>
+              <select
+                id="user"
+                name="user"
+                defaultValue={selectedUser?.id ?? ""}
+                className={roleSelectClass}
+              >
+                <option value="">All users</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {emailOf(u)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="h-8 rounded-md border px-2.5 text-xs font-medium hover:bg-muted"
+              >
+                Apply
+              </button>
+            </form>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-4">
           {!POSTHOG_ADMIN_CONFIGURED ? (
@@ -326,6 +378,42 @@ export default async function AdminPage() {
               </div>
             </>
           )}
+
+          {usageByUser && usageByUser.length > 0 ? (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Per-user activity
+              </p>
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead className="text-right">Events</TableHead>
+                      <TableHead className="text-right">Pageviews</TableHead>
+                      <TableHead className="text-right">Last active</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usageByUser.map((u) => (
+                      <TableRow key={u.email}>
+                        <TableCell className="font-medium">{u.email}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatNumber(u.events)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatNumber(u.pageviews)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {u.lastSeen}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
