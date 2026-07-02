@@ -18,7 +18,7 @@ import { formatDate } from "@/lib/format";
 /** Earliest date with data across flows/revenue (facility_daily & payments_daily start here). */
 export const DATA_FLOOR = "2025-06-01";
 
-export type PresetKey = "mtd" | "7d" | "30d" | "90d" | "qtd" | "lastq";
+export type PresetKey = "mtd" | "lastmonth" | "7d" | "30d" | "90d" | "qtd" | "lastq";
 /** Kept for back-compat in places that only deal with presets. */
 export type RangeKey = PresetKey;
 
@@ -29,6 +29,7 @@ export type RangeSpec =
 
 export const RANGE_OPTIONS: { key: PresetKey; label: string }[] = [
   { key: "mtd", label: "This month" },
+  { key: "lastmonth", label: "Previous month" },
   { key: "7d", label: "Last 7 days" },
   { key: "30d", label: "Last 30 days" },
   { key: "90d", label: "Last 90 days" },
@@ -103,6 +104,8 @@ export function prevPeriodLabel(spec: RangeSpec): string {
   switch (spec.key) {
     case "mtd":
       return "vs last month";
+    case "lastmonth":
+      return "vs prior month";
     case "qtd":
       return "vs last quarter";
     case "lastq":
@@ -125,6 +128,7 @@ export function periodShiftInterval(spec: RangeSpec): string {
   }
   switch (spec.key) {
     case "mtd":
+    case "lastmonth":
       return "INTERVAL 1 MONTH";
     case "7d":
       return "INTERVAL 7 DAY";
@@ -146,6 +150,11 @@ function currentBounds(spec: RangeSpec): { start: string; end: string } {
   switch (spec.key) {
     case "mtd":
       return { start: "DATE_TRUNC(CURRENT_DATE(), MONTH)", end: "CURRENT_DATE()" };
+    case "lastmonth":
+      return {
+        start: "DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 MONTH)",
+        end: "DATE_TRUNC(CURRENT_DATE(), MONTH)",
+      };
     case "7d":
       return { start: "DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)", end: "CURRENT_DATE()" };
     case "30d":

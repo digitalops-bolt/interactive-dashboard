@@ -177,7 +177,7 @@ export function PricingGroupTable({
               <SortHead label="Occupied" sortKey="occupied" />
               <SortHead label="Available" sortKey="available" />
               <SortHead label="Unavailable" sortKey="unavailable" />
-              <SortHead label="Occupancy" sortKey="occPct" />
+              <SortHead label="Unit occ." sortKey="occPct" />
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -56,7 +56,8 @@ export function formatSignedNumber(value: number | null | undefined): string {
 }
 
 // ── Period-over-period deltas ─────────────────────────────────────────────────
-// "pp" = percentage points (for occupancy %), "pct" = relative % change (revenue),
+// "pp" = occupancy point difference, DISPLAYED with a % sign (e.g. 80%→70% = "−10%") — per
+// the company's preference, not a relative %. "pct" = relative % change (revenue/spend),
 // "count" = absolute integer difference (move-ins/outs/net).
 export type DeltaKind = "pp" | "pct" | "count";
 export interface Delta {
@@ -78,7 +79,8 @@ export function computeDelta(
   const direction = diff > 1e-9 ? "up" : diff < -1e-9 ? "down" : "flat";
   let mag: string;
   if (kind === "pp") {
-    mag = `${Math.abs(diff).toFixed(1)}pp`;
+    // Point difference, shown with "%" (company preference): 80%→70% renders as "−10%".
+    mag = `${Math.abs(diff).toFixed(1).replace(/\.0$/, "")}%`;
   } else if (kind === "pct") {
     if (baseline === 0) return null;
     mag = `${Math.abs((diff / baseline) * 100).toFixed(1)}%`;

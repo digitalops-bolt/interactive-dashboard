@@ -150,7 +150,7 @@ export default async function PortfolioDetailPage({
             <p className="text-sm text-muted-foreground">
               {facilities.length}{" "}
               {facilities.length === 1 ? "facility" : "facilities"}
-              {kpis.occAsOfDate ? ` · occupancy as of ${formatDate(kpis.occAsOfDate)}` : ""}
+              {kpis.occAsOfDate ? ` · unit occupancy as of ${formatDate(kpis.occAsOfDate)}` : ""}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -162,12 +162,12 @@ export default async function PortfolioDetailPage({
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Occupancy"
+          title="Unit occupancy"
           value={formatPercent(kpis.occPct)}
           hint="Latest snapshot"
           comparisons={cmp(
             kpis.occPct,
-            "pct",
+            "pp",
             kpis.prevPeriod.occPct,
             kpis.prevYear.occPct,
           )}
@@ -287,7 +287,7 @@ export default async function PortfolioDetailPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Occupancy</TableHead>
+                    <TableHead className="text-right">Unit occ.</TableHead>
                     <TableHead className="text-right">Units</TableHead>
                     <TableHead className="text-right">Unavail.</TableHead>
                   </TableRow>
@@ -354,7 +354,7 @@ export default async function PortfolioDetailPage({
           <CardHeader>
             <CardTitle>By facility</CardTitle>
             <CardDescription>
-              Occupancy (latest) · revenue &amp; flows for {label.toLowerCase()} · click a
+              Unit occupancy (latest) · revenue &amp; flows for {label.toLowerCase()} · click a
               column to sort
             </CardDescription>
           </CardHeader>

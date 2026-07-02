@@ -5,6 +5,8 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/access-denied",
+  // Machine-to-machine: self-authenticates with BRIEFING_WEBHOOK_SECRET (see the route).
+  "/api/briefing(.*)",
 ]);
 
 // With Clerk keys present, every non-public route requires login; the company email-domain

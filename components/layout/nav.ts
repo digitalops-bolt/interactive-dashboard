@@ -1,11 +1,10 @@
 import {
-  Building2,
-  DollarSign,
+  ArrowLeftRight,
+  GitBranch,
   Layers,
   LayoutDashboard,
-  Megaphone,
+  Settings,
   ShieldCheck,
-  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,10 +18,10 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Overview", href: "/overview", icon: LayoutDashboard, enabled: true },
   { label: "Portfolio Detail", href: "/portfolios", icon: Layers, enabled: true },
-  { label: "Operations", href: "/operations", icon: TrendingUp, enabled: false },
-  { label: "Revenue", href: "/revenue", icon: DollarSign, enabled: false },
-  { label: "Marketing", href: "/marketing", icon: Megaphone, enabled: false },
-  { label: "Facilities", href: "/facilities", icon: Building2, enabled: false },
+  { label: "Moves", href: "/moves", icon: ArrowLeftRight, enabled: true },
+  // Gated to admin + digital-ops via canSeeNav (ROUTE_RULES); hidden for viewers.
+  { label: "Decision Tree", href: "/decision-tree", icon: GitBranch, enabled: true },
+  { label: "Settings", href: "/settings", icon: Settings, enabled: true },
   // Visibility is gated by role via canSeeNav (admins only); hidden for everyone else.
   { label: "Admin", href: "/admin", icon: ShieldCheck, enabled: true },
 ];

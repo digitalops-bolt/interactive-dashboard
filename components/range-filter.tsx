@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DayPicker, type DateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
-import { CalendarDays, ChevronDown } from "lucide-react";
+import { CalendarDays, ChevronDown, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/analytics";
@@ -24,6 +24,7 @@ export function RangeFilter({ active }: { active: RangeSpec }) {
   const params = useSearchParams();
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
 
   const floorDate = parseISO(DATA_FLOOR);
   const maxDate = parseISO(maxSelectableDate());
@@ -46,8 +47,11 @@ export function RangeFilter({ active }: { active: RangeSpec }) {
   function pushParams(mut: (sp: URLSearchParams) => void) {
     const sp = new URLSearchParams(params?.toString() ?? "");
     mut(sp);
-    router.push(`${pathname}?${sp.toString()}`, { scroll: false });
     setOpen(false);
+    // Transition so `pending` stays true while the server re-renders (shows the spinner).
+    startTransition(() => {
+      router.push(`${pathname}?${sp.toString()}`, { scroll: false });
+    });
   }
 
   function applyPreset(key: string) {
@@ -79,10 +83,15 @@ export function RangeFilter({ active }: { active: RangeSpec }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-busy={pending}
         className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-muted"
       >
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-        {rangeLabel(active)}
+        {pending ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        )}
+        {pending ? "Loading…" : rangeLabel(active)}
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
 

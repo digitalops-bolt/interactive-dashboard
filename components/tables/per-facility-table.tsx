@@ -132,7 +132,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
         <TableHeader>
           <TableRow>
             <SortHead label="Facility" sortKey="facility" align="left" />
-            <SortHead label="Occupancy" sortKey="occPct" />
+            <SortHead label="Unit occ." sortKey="occPct" />
             <TableHead className="text-right">Units</TableHead>
             <SortHead label="Unavail." sortKey="unavailable" />
             <SortHead label="Revenue" sortKey="revenue" />
