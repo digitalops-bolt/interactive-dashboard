@@ -3,7 +3,7 @@
 // Flow metrics (revenue/moves/net) reflect the SELECTED range; occupancy is always latest.
 
 // A baseline set of the comparable metrics for a prior window. Any field is null when
-// that window predates our data (e.g. last-year flows before Jun 2025) → renders "—".
+// that window predates our data (e.g. last-year flows before May 2025) → renders "—".
 export interface MetricBaseline {
   occPct: number | null;
   revenue: number | null;

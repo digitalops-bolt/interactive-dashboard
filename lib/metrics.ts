@@ -15,8 +15,12 @@
 
 import { formatDate } from "@/lib/format";
 
-/** Earliest date with data across flows/revenue (facility_daily & payments_daily start here). */
-export const DATA_FLOOR = "2025-06-01";
+/**
+ * Earliest date with data across flows/revenue (facility_daily & payments_daily start here).
+ * May 2025 was backfilled from raw on 2026-07-02; earlier months are NOT backfillable —
+ * only 6 facilities were on Cubby before April 2025 and April itself is a partial month.
+ */
+export const DATA_FLOOR = "2025-05-01";
 
 export type PresetKey = "mtd" | "lastmonth" | "7d" | "30d" | "90d" | "qtd" | "lastq";
 /** Kept for back-compat in places that only deal with presets. */
