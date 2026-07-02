@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/table";
 import { TrendDelta } from "@/components/trend-delta";
 import { cn } from "@/lib/utils";
-import { computeDelta, formatNumber, formatSignedNumber } from "@/lib/format";
+import { computeDelta, formatNumber, formatPercent, formatSignedNumber } from "@/lib/format";
 import { track } from "@/lib/analytics";
 
 export interface MovesRow {
   portfolio: string;
+  occPct: number | null; // unit occupancy, snapshot at the LAST DAY of the selected range
+  occPctPrev: number | null; // snapshot at the last day of the PREVIOUS same-length range
   moveIns: number;
   moveInsLY: number | null;
   moveOuts: number;
@@ -26,9 +28,9 @@ export interface MovesRow {
   netLY: number | null;
 }
 
-type SortKey = "portfolio" | "moveIns" | "moveOuts" | "netRentals";
+type SortKey = "portfolio" | "occPct" | "moveIns" | "moveOuts" | "netRentals";
 
-/** Value with its year-over-year change shown inline beside it (no label — see card description). */
+/** Value with its comparison change shown inline beside it (no label — see card description). */
 function MoveCell({
   value,
   current,
@@ -46,6 +48,19 @@ function MoveCell({
       <TrendDelta
         delta={computeDelta(current, baseline, "count")}
         higherIsBetter={higherIsBetter}
+        divider
+      />
+    </div>
+  );
+}
+
+/** Unit occupancy at the end of the range, with the point-difference vs the prior range's end. */
+function OccCell({ occPct, occPctPrev }: { occPct: number | null; occPctPrev: number | null }) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className="tabular-nums">{formatPercent(occPct)}</span>
+      <TrendDelta
+        delta={occPct == null ? null : computeDelta(occPct, occPctPrev, "pp")}
         divider
       />
     </div>
@@ -76,6 +91,9 @@ export function MovesTable({
     return [...rows].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1; // nulls last (e.g. Unmapped has no occupancy)
+      if (bv == null) return -1;
       const cmp =
         typeof av === "string"
           ? av.localeCompare(bv as string)
@@ -126,6 +144,7 @@ export function MovesTable({
         <TableHeader>
           <TableRow>
             <SortHead label="Portfolio" sortKey="portfolio" align="left" />
+            <SortHead label="Unit occ." sortKey="occPct" />
             <SortHead label="Move-ins" sortKey="moveIns" />
             <SortHead label="Move-outs" sortKey="moveOuts" />
             <SortHead label="Net rentals" sortKey="netRentals" />
@@ -135,6 +154,9 @@ export function MovesTable({
           {sorted.map((r) => (
             <TableRow key={r.portfolio}>
               <TableCell className="font-medium">{r.portfolio}</TableCell>
+              <TableCell className="text-right">
+                <OccCell occPct={r.occPct} occPctPrev={r.occPctPrev} />
+              </TableCell>
               <TableCell className="text-right">
                 <MoveCell value={formatNumber(r.moveIns)} current={r.moveIns} baseline={r.moveInsLY} />
               </TableCell>
@@ -159,6 +181,9 @@ export function MovesTable({
         <TableFooter>
           <TableRow>
             <TableCell className="font-semibold">Total</TableCell>
+            <TableCell className="text-right">
+              <OccCell occPct={totals.occPct} occPctPrev={totals.occPctPrev} />
+            </TableCell>
             <TableCell className="text-right">
               <MoveCell value={formatNumber(totals.moveIns)} current={totals.moveIns} baseline={totals.moveInsLY} />
             </TableCell>

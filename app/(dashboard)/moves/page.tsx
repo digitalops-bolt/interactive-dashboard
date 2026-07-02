@@ -35,9 +35,12 @@ export default async function MovesPage({
     ? leaderboard.filter((r) => r.isUnmapped || allowed.includes(r.portfolio))
     : leaderboard;
 
-  // Move-outs last year is derived: moveIns_LY − netRentals_LY.
+  // Move-outs last year is derived: moveIns_LY − netRentals_LY. Occupancy is the snapshot at
+  // the last day of the selected range, compared to the last day of the previous range.
   const rows: MovesRow[] = visible.map((r) => ({
     portfolio: r.portfolio,
+    occPct: r.occPct,
+    occPctPrev: r.occPctPrevPeriod,
     moveIns: r.moveIns,
     moveInsLY: r.moveInsPrevYear,
     moveOuts: r.moveOuts,
@@ -49,18 +52,27 @@ export default async function MovesPage({
     netLY: r.netRentalsPrevYear,
   }));
 
-  const sum = rows.reduce(
+  const sum = visible.reduce(
     (acc, r) => ({
       moveIns: acc.moveIns + r.moveIns,
       moveOuts: acc.moveOuts + r.moveOuts,
       netRentals: acc.netRentals + r.netRentals,
-      moveInsLY: acc.moveInsLY + (r.moveInsLY ?? 0),
-      moveOutsLY: acc.moveOutsLY + (r.moveOutsLY ?? 0),
-      netLY: acc.netLY + (r.netLY ?? 0),
+      moveInsLY: acc.moveInsLY + (r.moveInsPrevYear ?? 0),
+      moveOutsLY:
+        acc.moveOutsLY +
+        (r.moveInsPrevYear != null && r.netRentalsPrevYear != null
+          ? r.moveInsPrevYear - r.netRentalsPrevYear
+          : 0),
+      netLY: acc.netLY + (r.netRentalsPrevYear ?? 0),
+      occupied: acc.occupied + (r.occupiedUnits ?? 0),
+      total: acc.total + (r.totalUnits ?? 0),
     }),
-    { moveIns: 0, moveOuts: 0, netRentals: 0, moveInsLY: 0, moveOutsLY: 0, netLY: 0 },
+    { moveIns: 0, moveOuts: 0, netRentals: 0, moveInsLY: 0, moveOutsLY: 0, netLY: 0, occupied: 0, total: 0 },
   );
   const totals: Omit<MovesRow, "portfolio"> = {
+    // Unit-weighted company occupancy; no prev-period unit counts, so no total delta ("—").
+    occPct: sum.total > 0 ? Math.round((sum.occupied / sum.total) * 1000) / 10 : null,
+    occPctPrev: null,
     moveIns: sum.moveIns,
     moveInsLY: sum.moveInsLY || null,
     moveOuts: sum.moveOuts,
@@ -110,9 +122,10 @@ export default async function MovesPage({
         <CardHeader>
           <CardTitle>Move-ins &amp; move-outs</CardTitle>
           <CardDescription>
-            Net rentals = move-ins − move-outs. The colored figure beside each value is the change
-            vs the same period last year (blank where last-year data isn&apos;t available yet).
-            Click any column to sort.
+            Net rentals = move-ins − move-outs. The colored figure beside each move value is the
+            change vs the same period last year (blank where last-year data isn&apos;t available
+            yet). Unit occupancy is the snapshot on the range&apos;s last day, compared to the last
+            day of the previous range. Click any column to sort.
           </CardDescription>
         </CardHeader>
         <CardContent>
