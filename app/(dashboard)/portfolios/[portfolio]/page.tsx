@@ -85,7 +85,15 @@ export default async function PortfolioDetailPage({
     to?: string | string[];
   };
 }) {
-  const portfolio = params.portfolio;
+  // Next 14 delivers dynamic params still percent-encoded ("Bowling%20Green"), so decode
+  // before the names-allowlist check and the BigQuery filters. Malformed sequences (e.g.
+  // "%zz") throw — fall back to the raw value, which the notFound guard below rejects.
+  let portfolio: string;
+  try {
+    portfolio = decodeURIComponent(params.portfolio);
+  } catch {
+    portfolio = params.portfolio;
+  }
   const range = parseRangeSpec(searchParams ?? {});
   const label = rangeLabel(range);
 
