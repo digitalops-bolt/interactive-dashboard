@@ -32,6 +32,7 @@ yarn-error.log*
 # (not secrets, but business/architecture context that doesn't need repo exposure)
 PLAN.md
 data_model_doc.md
+PROJECT_SUMMARY.md
 
 # vercel
 .vercel
