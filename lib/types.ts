@@ -39,10 +39,10 @@ export interface UnrentablePortfolioRow {
   unrentableUnits: number;
   occPct: number; // 0–100, occupied/total
   unrentablePctOfUnits: number | null; // 0–100, unrentable/total
-  unrentablePctOfVacant: number | null; // 0–100, unrentable/(available+unrentable)
+  unrentablePctOfAvailable: number | null; // unrentable/available — CAN exceed 100; null when available = 0
   unrentableUnitsPrev: number | null;
   unrentablePctOfUnitsPrev: number | null;
-  unrentablePctOfVacantPrev: number | null;
+  unrentablePctOfAvailablePrev: number | null;
 }
 
 export interface UnrentableSummary {
@@ -51,12 +51,12 @@ export interface UnrentableSummary {
   availableUnits: number;
   unrentableUnits: number;
   unrentablePctOfUnits: number | null;
-  unrentablePctOfVacant: number | null;
+  unrentablePctOfAvailable: number | null;
   portfoliosAffected: number; // portfolios with unrentable > 0
   prev: {
     unrentableUnits: number | null;
     unrentablePctOfUnits: number | null;
-    unrentablePctOfVacant: number | null;
+    unrentablePctOfAvailable: number | null;
   };
 }
 

@@ -27,7 +27,7 @@ type SortKey =
   | "availableUnits"
   | "unrentableUnits"
   | "unrentablePctOfUnits"
-  | "unrentablePctOfVacant";
+  | "unrentablePctOfAvailable";
 
 function occToneClass(pct: number | null) {
   if (pct == null) return "bg-muted text-muted-foreground hover:bg-muted";
@@ -38,18 +38,19 @@ function occToneClass(pct: number | null) {
   return "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-950 dark:text-red-300";
 }
 
-// Reversed tones: a HIGH unrentable share of vacant inventory is the bad case.
+// Reversed tones: a HIGH unrentable-to-available ratio is the bad case. The ratio can
+// exceed 100% (more broken units than sellable empty ones), hence the wider cutoffs.
 function urgencyToneClass(pct: number | null) {
   if (pct == null) return "bg-muted text-muted-foreground hover:bg-muted";
-  if (pct >= 40)
+  if (pct >= 50)
     return "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-950 dark:text-red-300";
-  if (pct >= 20)
+  if (pct >= 25)
     return "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300";
   return "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300";
 }
 
 export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("unrentablePctOfVacant");
+  const [sortKey, setSortKey] = useState<SortKey>("unrentablePctOfAvailable");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
 
   function toggle(key: SortKey) {
@@ -94,7 +95,6 @@ export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[]
         unrentPrevN++;
       }
     }
-    const vacant = avail + unrent;
     return {
       tot,
       occ,
@@ -102,7 +102,7 @@ export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[]
       unrent,
       occPct: tot > 0 ? (occ / tot) * 100 : null,
       pctOfUnits: tot > 0 ? (unrent / tot) * 100 : null,
-      pctOfVacant: vacant > 0 ? (unrent / vacant) * 100 : null,
+      pctOfAvailable: avail > 0 ? (unrent / avail) * 100 : null,
       unrentPrev: unrentPrevN > 0 ? unrentPrev : null,
     };
   }, [rows]);
@@ -155,17 +155,21 @@ export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[]
             <SortHead label="Available" sortKey="availableUnits" />
             <SortHead label="Unrentable" sortKey="unrentableUnits" />
             <SortHead label="% of units" sortKey="unrentablePctOfUnits" />
-            <SortHead label="% of vacant" sortKey="unrentablePctOfVacant" />
+            <SortHead label="% of available" sortKey="unrentablePctOfAvailable" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.map((r) => {
-            // 30-day arrows: fewer unrentable units / lower vacant share = good (green down).
+            // 30-day arrows: fewer unrentable units / lower ratio = good (green down).
             const countD = computeDelta(r.unrentableUnits, r.unrentableUnitsPrev, "count");
-            const vacantD =
-              r.unrentablePctOfVacant == null
+            const availD =
+              r.unrentablePctOfAvailable == null
                 ? null
-                : computeDelta(r.unrentablePctOfVacant, r.unrentablePctOfVacantPrev, "pp");
+                : computeDelta(
+                    r.unrentablePctOfAvailable,
+                    r.unrentablePctOfAvailablePrev,
+                    "pp",
+                  );
             return (
               <TableRow key={r.portfolio}>
                 <TableCell className="font-medium">
@@ -209,18 +213,18 @@ export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[]
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1.5">
-                    {r.unrentablePctOfVacant == null ? (
+                    {r.unrentablePctOfAvailable == null ? (
                       <span className="text-muted-foreground">—</span>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className={urgencyToneClass(r.unrentablePctOfVacant)}
+                        className={urgencyToneClass(r.unrentablePctOfAvailable)}
                       >
-                        {formatPercent(r.unrentablePctOfVacant)}
+                        {formatPercent(r.unrentablePctOfAvailable)}
                       </Badge>
                     )}
-                    {vacantD ? (
-                      <TrendDelta delta={vacantD} higherIsBetter={false} divider />
+                    {availD ? (
+                      <TrendDelta delta={availD} higherIsBetter={false} divider />
                     ) : null}
                   </div>
                 </TableCell>
@@ -265,11 +269,14 @@ export function UnrentableLeaderboard({ rows }: { rows: UnrentablePortfolioRow[]
               {formatPercent(totals.pctOfUnits)}
             </TableCell>
             <TableCell className="text-right">
-              {totals.pctOfVacant == null ? (
+              {totals.pctOfAvailable == null ? (
                 "—"
               ) : (
-                <Badge variant="secondary" className={urgencyToneClass(totals.pctOfVacant)}>
-                  {formatPercent(totals.pctOfVacant)}
+                <Badge
+                  variant="secondary"
+                  className={urgencyToneClass(totals.pctOfAvailable)}
+                >
+                  {formatPercent(totals.pctOfAvailable)}
                 </Badge>
               )}
             </TableCell>

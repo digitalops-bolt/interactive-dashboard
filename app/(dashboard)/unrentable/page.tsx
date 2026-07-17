@@ -74,18 +74,18 @@ export default async function UnrentablePage() {
           }
         />
         <KpiCard
-          title="% of vacant units"
-          value={formatPercent(summary.unrentablePctOfVacant)}
-          hint="Share of empty units that can't be sold"
+          title="% of available units"
+          value={formatPercent(summary.unrentablePctOfAvailable)}
+          hint="Unrentable ÷ available (can exceed 100%)"
           higherIsBetter={false}
           comparisons={
-            summary.unrentablePctOfVacant == null
+            summary.unrentablePctOfAvailable == null
               ? undefined
               : [
                   {
                     label: vs30d,
-                    current: summary.unrentablePctOfVacant,
-                    baseline: summary.prev.unrentablePctOfVacant,
+                    current: summary.unrentablePctOfAvailable,
+                    baseline: summary.prev.unrentablePctOfAvailable,
                     kind: "pp",
                   },
                 ]
@@ -103,9 +103,9 @@ export default async function UnrentablePage() {
         <CardHeader>
           <CardTitle>Unrentable units by portfolio</CardTitle>
           <CardDescription>
-            Latest snapshot · available = rentable − occupied · &ldquo;% of vacant&rdquo; =
-            unrentable share of all empty units (the urgency signal: high means most of the
-            portfolio&apos;s empty space can&apos;t be sold) · arrows compare to 30 days ago
+            Latest snapshot · available = rentable − occupied · &ldquo;% of available&rdquo;
+            = unrentable ÷ available (the urgency signal — over 100% means more broken units
+            than sellable empty ones) · arrows compare to 30 days ago
           </CardDescription>
         </CardHeader>
         <CardContent>

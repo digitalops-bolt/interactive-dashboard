@@ -70,15 +70,14 @@ export async function getUnrentableByPortfolio(): Promise<{
   );
 
   const num = (v: number | null | undefined) => (v == null ? null : Number(v));
-  // Unrentable share of vacant = unrentable / (available + unrentable): "of the units
-  // sitting empty, how many can't be sold" — bounded 0–100 even when available is tiny.
-  const pctOfVacant = (
+  // Unrentable / available: exceeds 100% when a portfolio has more broken units than
+  // sellable empty ones (Felipe's preferred urgency read). Null when nothing is available.
+  const pctOfAvailable = (
     unrentable: number | null,
     available: number | null,
   ): number | null => {
     if (unrentable == null || available == null) return null;
-    const vacant = available + unrentable;
-    return vacant > 0 ? (unrentable / vacant) * 100 : null;
+    return available > 0 ? (unrentable / available) * 100 : null;
   };
   const pctOfTotal = (unrentable: number | null, total: number | null): number | null =>
     unrentable == null || total == null || total === 0 ? null : (unrentable / total) * 100;
@@ -97,10 +96,10 @@ export async function getUnrentableByPortfolio(): Promise<{
       unrentableUnits: Number(r.unrentable_units),
       occPct: (Number(r.occupied_units) / Number(r.total_units)) * 100,
       unrentablePctOfUnits: pctOfTotal(Number(r.unrentable_units), Number(r.total_units)),
-      unrentablePctOfVacant: pctOfVacant(Number(r.unrentable_units), available),
+      unrentablePctOfAvailable: pctOfAvailable(Number(r.unrentable_units), available),
       unrentableUnitsPrev: num(r.unrentable_units_30d),
       unrentablePctOfUnitsPrev: pctOfTotal(num(r.unrentable_units_30d), num(r.total_units_30d)),
-      unrentablePctOfVacantPrev: pctOfVacant(num(r.unrentable_units_30d), avail30d),
+      unrentablePctOfAvailablePrev: pctOfAvailable(num(r.unrentable_units_30d), avail30d),
     };
   });
 
@@ -132,12 +131,12 @@ export async function getUnrentableByPortfolio(): Promise<{
     availableUnits,
     unrentableUnits,
     unrentablePctOfUnits: pctOfTotal(unrentableUnits, totalUnits),
-    unrentablePctOfVacant: pctOfVacant(unrentableUnits, availableUnits),
+    unrentablePctOfAvailable: pctOfAvailable(unrentableUnits, availableUnits),
     portfoliosAffected: rows.filter((r) => r.unrentableUnits > 0).length,
     prev: {
       unrentableUnits: prevUnrentable,
       unrentablePctOfUnits: pctOfTotal(prevUnrentable, prevTotal),
-      unrentablePctOfVacant: pctOfVacant(prevUnrentable, prevAvailable),
+      unrentablePctOfAvailable: pctOfAvailable(prevUnrentable, prevAvailable),
     },
   };
 
