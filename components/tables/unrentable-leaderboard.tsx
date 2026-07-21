@@ -170,12 +170,12 @@ export function UnrentableLeaderboard({
         <TableHeader>
           <TableRow>
             <SortHead label="Portfolio" sortKey="portfolio" align="left" />
+            <SortHead label="Unrentable" sortKey="unrentableUnits" />
             <SortHead label="% of available" sortKey="unrentablePctOfAvailable" />
             <SortHead label="Active auctions" sortKey="activeAuctions" />
             <SortHead label="Total units" sortKey="totalUnits" />
             <SortHead label="Occupied" sortKey="occupiedUnits" />
             <SortHead label="Available" sortKey="availableUnits" />
-            <SortHead label="Unrentable" sortKey="unrentableUnits" />
             <SortHead label="Unit occ." sortKey="occPct" />
           </TableRow>
         </TableHeader>
@@ -212,6 +212,14 @@ export function UnrentableLeaderboard({
                       {r.portfolio}
                     </button>
                   </TableCell>
+                  <TableCell className="text-right tabular-nums font-medium">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {formatNumber(r.unrentableUnits)}
+                      {countD ? (
+                        <TrendDelta delta={countD} higherIsBetter={false} divider />
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       {r.unrentablePctOfAvailable == null ? (
@@ -241,14 +249,6 @@ export function UnrentableLeaderboard({
                   <TableCell className="text-right tabular-nums">
                     {formatNumber(r.availableUnits)}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {formatNumber(r.unrentableUnits)}
-                      {countD ? (
-                        <TrendDelta delta={countD} higherIsBetter={false} divider />
-                      ) : null}
-                    </div>
-                  </TableCell>
                   <TableCell className="text-right">
                     <Badge variant="secondary" className={occToneClass(r.occPct)}>
                       {formatPercent(r.occPct)}
@@ -271,10 +271,10 @@ export function UnrentableLeaderboard({
                             <TableHeader>
                               <TableRow className="hover:bg-transparent">
                                 <TableHead>Pricing group</TableHead>
+                                <TableHead className="text-right">Unrentable</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                                 <TableHead className="text-right">Occupied</TableHead>
                                 <TableHead className="text-right">Available</TableHead>
-                                <TableHead className="text-right">Unrentable</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -282,6 +282,9 @@ export function UnrentableLeaderboard({
                                 <TableRow key={pg.pricingGroup}>
                                   <TableCell className="font-medium">
                                     {pg.pricingGroup}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums font-medium">
+                                    {formatNumber(pg.unrentableUnits)}
                                   </TableCell>
                                   <TableCell className="text-right tabular-nums text-muted-foreground">
                                     {formatNumber(pg.totalUnits)}
@@ -291,9 +294,6 @@ export function UnrentableLeaderboard({
                                   </TableCell>
                                   <TableCell className="text-right tabular-nums">
                                     {formatNumber(pg.availableUnits)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums font-medium">
-                                    {formatNumber(pg.unrentableUnits)}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -325,6 +325,18 @@ export function UnrentableLeaderboard({
         <TableFooter>
           <TableRow>
             <TableCell className="font-semibold">Total</TableCell>
+            <TableCell className="text-right tabular-nums font-semibold">
+              <div className="flex items-center justify-end gap-1.5">
+                {formatNumber(totals.unrent)}
+                {totals.unrentPrev != null ? (
+                  <TrendDelta
+                    delta={computeDelta(totals.unrent, totals.unrentPrev, "count")}
+                    higherIsBetter={false}
+                    divider
+                  />
+                ) : null}
+              </div>
+            </TableCell>
             <TableCell className="text-right">
               {totals.pctOfAvailable == null ? (
                 "—"
@@ -348,18 +360,6 @@ export function UnrentableLeaderboard({
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">
               {formatNumber(totals.avail)}
-            </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold">
-              <div className="flex items-center justify-end gap-1.5">
-                {formatNumber(totals.unrent)}
-                {totals.unrentPrev != null ? (
-                  <TrendDelta
-                    delta={computeDelta(totals.unrent, totals.unrentPrev, "count")}
-                    higherIsBetter={false}
-                    divider
-                  />
-                ) : null}
-              </div>
             </TableCell>
             <TableCell className="text-right">
               {totals.occPct == null ? (
