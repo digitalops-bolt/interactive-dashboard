@@ -171,11 +171,11 @@ export function UnrentableLeaderboard({
           <TableRow>
             <SortHead label="Portfolio" sortKey="portfolio" align="left" />
             <SortHead label="Unrentable" sortKey="unrentableUnits" />
+            <SortHead label="Available" sortKey="availableUnits" />
             <SortHead label="% of available" sortKey="unrentablePctOfAvailable" />
             <SortHead label="Active auctions" sortKey="activeAuctions" />
             <SortHead label="Total units" sortKey="totalUnits" />
             <SortHead label="Occupied" sortKey="occupiedUnits" />
-            <SortHead label="Available" sortKey="availableUnits" />
             <SortHead label="Unit occ." sortKey="occPct" />
           </TableRow>
         </TableHeader>
@@ -220,6 +220,9 @@ export function UnrentableLeaderboard({
                       ) : null}
                     </div>
                   </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatNumber(r.availableUnits)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       {r.unrentablePctOfAvailable == null ? (
@@ -246,9 +249,6 @@ export function UnrentableLeaderboard({
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {formatNumber(r.occupiedUnits)}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatNumber(r.availableUnits)}
-                  </TableCell>
                   <TableCell className="text-right">
                     <Badge variant="secondary" className={occToneClass(r.occPct)}>
                       {formatPercent(r.occPct)}
@@ -272,9 +272,9 @@ export function UnrentableLeaderboard({
                               <TableRow className="hover:bg-transparent">
                                 <TableHead>Pricing group</TableHead>
                                 <TableHead className="text-right">Unrentable</TableHead>
+                                <TableHead className="text-right">Available</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                                 <TableHead className="text-right">Occupied</TableHead>
-                                <TableHead className="text-right">Available</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -286,14 +286,14 @@ export function UnrentableLeaderboard({
                                   <TableCell className="text-right tabular-nums font-medium">
                                     {formatNumber(pg.unrentableUnits)}
                                   </TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {formatNumber(pg.availableUnits)}
+                                  </TableCell>
                                   <TableCell className="text-right tabular-nums text-muted-foreground">
                                     {formatNumber(pg.totalUnits)}
                                   </TableCell>
                                   <TableCell className="text-right tabular-nums text-muted-foreground">
                                     {formatNumber(pg.occupiedUnits)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums">
-                                    {formatNumber(pg.availableUnits)}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -337,6 +337,9 @@ export function UnrentableLeaderboard({
                 ) : null}
               </div>
             </TableCell>
+            <TableCell className="text-right tabular-nums font-semibold">
+              {formatNumber(totals.avail)}
+            </TableCell>
             <TableCell className="text-right">
               {totals.pctOfAvailable == null ? (
                 "—"
@@ -357,9 +360,6 @@ export function UnrentableLeaderboard({
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">
               {formatNumber(totals.occ)}
-            </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold">
-              {formatNumber(totals.avail)}
             </TableCell>
             <TableCell className="text-right">
               {totals.occPct == null ? (
