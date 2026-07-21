@@ -7,7 +7,10 @@ import {
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/kpi-card";
 import { UnrentableLeaderboard } from "@/components/tables/unrentable-leaderboard";
-import { getUnrentableByPortfolio } from "@/lib/queries/unrentable";
+import {
+  getUnrentableByPortfolio,
+  getUnrentablePricingGroupBreakdown,
+} from "@/lib/queries/unrentable";
 import { getCurrentUser } from "@/lib/current-user";
 import { AUTH_ENABLED } from "@/lib/auth";
 import { getRole, portfolioAccess } from "@/lib/roles";
@@ -18,14 +21,23 @@ export const runtime = "nodejs";
 // Snapshot page (no range filter): unrentable inventory is a stock, not a flow, so the
 // page always shows the latest occupancy_daily snapshot with 30-day-ago arrows.
 export default async function UnrentablePage() {
-  const [{ rows, summary }, user] = await Promise.all([
+  const [{ rows, summary }, pricingGroupsByPortfolio, user] = await Promise.all([
     getUnrentableByPortfolio(),
+    getUnrentablePricingGroupBreakdown(),
     AUTH_ENABLED ? getCurrentUser() : Promise.resolve(null),
   ]);
 
   const role = AUTH_ENABLED ? getRole(user) : "admin";
   const allowed = portfolioAccess(role);
   const visibleRows = allowed ? rows.filter((r) => allowed.includes(r.portfolio)) : rows;
+  // UnrentableLeaderboard is a client component — any prop passed to it serializes into the
+  // RSC payload regardless of whether it renders, so the pricing-group map needs the same
+  // role-based filter as visibleRows, not just the rows that actually get displayed.
+  const visiblePricingGroups = allowed
+    ? Object.fromEntries(
+        Object.entries(pricingGroupsByPortfolio).filter(([p]) => allowed.includes(p)),
+      )
+    : pricingGroupsByPortfolio;
 
   const vs30d = "vs 30 days ago";
 
@@ -105,11 +117,15 @@ export default async function UnrentablePage() {
           <CardDescription>
             Latest snapshot · available = rentable − occupied · &ldquo;% of available&rdquo;
             = unrentable ÷ available (the urgency signal — over 100% means more broken units
-            than sellable empty ones) · arrows compare to 30 days ago
+            than sellable empty ones) · arrows compare to 30 days ago · click a portfolio to
+            see its unrentable units by pricing group
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <UnrentableLeaderboard rows={visibleRows} />
+          <UnrentableLeaderboard
+            rows={visibleRows}
+            pricingGroupsByPortfolio={visiblePricingGroups}
+          />
         </CardContent>
       </Card>
     </div>

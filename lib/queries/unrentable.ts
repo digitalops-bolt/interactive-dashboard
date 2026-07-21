@@ -1,7 +1,12 @@
 import { cachedQuery } from "@/lib/bigquery";
-import type { UnrentablePortfolioRow, UnrentableSummary } from "@/lib/types";
+import type {
+  UnrentablePortfolioRow,
+  UnrentablePricingGroupRow,
+  UnrentableSummary,
+} from "@/lib/types";
 
 const A = "cubbyboltdata.analytics";
+const S = "cubbyboltdata.stg";
 
 /**
  * Unrentable-unit detail per portfolio, from the latest occupancy_daily snapshot
@@ -14,60 +19,77 @@ export async function getUnrentableByPortfolio(): Promise<{
   rows: UnrentablePortfolioRow[];
   summary: UnrentableSummary;
 }> {
-  const raw = await cachedQuery<{
-    portfolio: string;
-    total_units: number;
-    occupied_units: number;
-    rentable_units: number;
-    unrentable_units: number;
-    total_units_30d: number | null;
-    occupied_units_30d: number | null;
-    rentable_units_30d: number | null;
-    unrentable_units_30d: number | null;
-    as_of: string;
-  }>(
-    `WITH latest AS (
-       SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`
-     ),
-     baseline AS (
-       SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`, latest
-       WHERE date <= DATE_SUB(latest.d, INTERVAL 30 DAY)
-     ),
-     cur AS (
-       SELECT portfolio_name AS portfolio,
-              SUM(total_units) AS total_units,
-              SUM(occupied_units) AS occupied_units,
-              SUM(rentable_units) AS rentable_units,
-              SUM(unrentable_units) AS unrentable_units
-       FROM \`${A}.occupancy_daily\`, latest
-       WHERE date = latest.d
-       GROUP BY 1
-     ),
-     prev AS (
-       SELECT portfolio_name AS portfolio,
-              SUM(total_units) AS total_units,
-              SUM(occupied_units) AS occupied_units,
-              SUM(rentable_units) AS rentable_units,
-              SUM(unrentable_units) AS unrentable_units
-       FROM \`${A}.occupancy_daily\`, baseline
-       WHERE date = baseline.d
-       GROUP BY 1
-     )
-     SELECT cur.portfolio,
-            cur.total_units,
-            cur.occupied_units,
-            cur.rentable_units,
-            cur.unrentable_units,
-            prev.total_units AS total_units_30d,
-            prev.occupied_units AS occupied_units_30d,
-            prev.rentable_units AS rentable_units_30d,
-            prev.unrentable_units AS unrentable_units_30d,
-            (SELECT FORMAT_DATE('%Y-%m-%d', d) FROM latest) AS as_of
-     FROM cur
-     LEFT JOIN prev USING (portfolio)
-     ORDER BY cur.unrentable_units DESC`,
-    { cacheKey: "unrentable-by-portfolio" },
-  );
+  const [raw, auctionRows] = await Promise.all([
+    cachedQuery<{
+      portfolio: string;
+      total_units: number;
+      occupied_units: number;
+      rentable_units: number;
+      unrentable_units: number;
+      total_units_30d: number | null;
+      occupied_units_30d: number | null;
+      rentable_units_30d: number | null;
+      unrentable_units_30d: number | null;
+      as_of: string;
+    }>(
+      `WITH latest AS (
+         SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`
+       ),
+       baseline AS (
+         SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`, latest
+         WHERE date <= DATE_SUB(latest.d, INTERVAL 30 DAY)
+       ),
+       cur AS (
+         SELECT portfolio_name AS portfolio,
+                SUM(total_units) AS total_units,
+                SUM(occupied_units) AS occupied_units,
+                SUM(rentable_units) AS rentable_units,
+                SUM(unrentable_units) AS unrentable_units
+         FROM \`${A}.occupancy_daily\`, latest
+         WHERE date = latest.d
+         GROUP BY 1
+       ),
+       prev AS (
+         SELECT portfolio_name AS portfolio,
+                SUM(total_units) AS total_units,
+                SUM(occupied_units) AS occupied_units,
+                SUM(rentable_units) AS rentable_units,
+                SUM(unrentable_units) AS unrentable_units
+         FROM \`${A}.occupancy_daily\`, baseline
+         WHERE date = baseline.d
+         GROUP BY 1
+       )
+       SELECT cur.portfolio,
+              cur.total_units,
+              cur.occupied_units,
+              cur.rentable_units,
+              cur.unrentable_units,
+              prev.total_units AS total_units_30d,
+              prev.occupied_units AS occupied_units_30d,
+              prev.rentable_units AS rentable_units_30d,
+              prev.unrentable_units AS unrentable_units_30d,
+              (SELECT FORMAT_DATE('%Y-%m-%d', d) FROM latest) AS as_of
+       FROM cur
+       LEFT JOIN prev USING (portfolio)
+       ORDER BY cur.unrentable_units DESC`,
+      { cacheKey: "unrentable-by-portfolio" },
+    ),
+    // Active auctions is an independent signal, not an unrentable sub-breakdown — a unit only
+    // becomes unrentable once vacant, while an in-auction lease means it's still occupied, so
+    // the two never overlap (verified empirically). leases_enriched is a new dependency for
+    // this tab; .catch keeps a hiccup there from taking down the whole page.
+    cachedQuery<{ portfolio: string; active_auctions: number | null }>(
+      `SELECT portfolio_name AS portfolio, SUM(is_in_auction) AS active_auctions
+       FROM \`${S}.leases_enriched\`
+       WHERE is_active = 1 AND portfolio_name IS NOT NULL
+       GROUP BY portfolio`,
+      { cacheKey: "unrentable-active-auctions" },
+    ).catch(() => null),
+  ]);
+
+  const auctionsByPortfolio = auctionRows
+    ? new Map(auctionRows.map((r) => [r.portfolio, Number(r.active_auctions ?? 0)]))
+    : null;
 
   const num = (v: number | null | undefined) => (v == null ? null : Number(v));
   // Unrentable / available: exceeds 100% when a portfolio has more broken units than
@@ -95,10 +117,9 @@ export async function getUnrentableByPortfolio(): Promise<{
       availableUnits: available,
       unrentableUnits: Number(r.unrentable_units),
       occPct: (Number(r.occupied_units) / Number(r.total_units)) * 100,
-      unrentablePctOfUnits: pctOfTotal(Number(r.unrentable_units), Number(r.total_units)),
       unrentablePctOfAvailable: pctOfAvailable(Number(r.unrentable_units), available),
+      activeAuctions: auctionsByPortfolio == null ? null : auctionsByPortfolio.get(r.portfolio) ?? 0,
       unrentableUnitsPrev: num(r.unrentable_units_30d),
-      unrentablePctOfUnitsPrev: pctOfTotal(num(r.unrentable_units_30d), num(r.total_units_30d)),
       unrentablePctOfAvailablePrev: pctOfAvailable(num(r.unrentable_units_30d), avail30d),
     };
   });
@@ -141,4 +162,54 @@ export async function getUnrentableByPortfolio(): Promise<{
   };
 
   return { rows, summary };
+}
+
+/**
+ * Unrentable-unit detail by pricing group, for every portfolio's per-row expand on the
+ * leaderboard. Fetched eagerly for all portfolios up front (this page has no client-side
+ * fetching anywhere) rather than lazily per row on click. Filtered to pricing groups that
+ * currently have unrentable units — company-wide only ~700 units are unrentable, so most of
+ * a large portfolio's pricing-group tiers will have none; showing those would just be noise
+ * ahead of what the "View full portfolio" link already covers in full.
+ */
+export async function getUnrentablePricingGroupBreakdown(): Promise<
+  Record<string, UnrentablePricingGroupRow[]>
+> {
+  const raw = await cachedQuery<{
+    portfolio: string;
+    pricing_group: string | null;
+    total_units: number;
+    occupied_units: number;
+    available_units: number;
+    unrentable_units: number;
+  }>(
+    `WITH latest AS (
+       SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`
+     )
+     SELECT portfolio_name AS portfolio,
+            pricing_group_name AS pricing_group,
+            SUM(total_units) AS total_units,
+            SUM(occupied_units) AS occupied_units,
+            SUM(rentable_units) - SUM(occupied_units) AS available_units,
+            SUM(unrentable_units) AS unrentable_units
+     FROM \`${A}.occupancy_daily\`, latest
+     WHERE date = latest.d
+     GROUP BY 1, 2
+     HAVING unrentable_units > 0
+     ORDER BY 1, unrentable_units DESC`,
+    { cacheKey: "unrentable-pricing-groups" },
+  );
+
+  const byPortfolio: Record<string, UnrentablePricingGroupRow[]> = {};
+  for (const r of raw) {
+    const row: UnrentablePricingGroupRow = {
+      pricingGroup: r.pricing_group ?? "Uncategorized",
+      totalUnits: Number(r.total_units),
+      occupiedUnits: Number(r.occupied_units),
+      availableUnits: Number(r.available_units),
+      unrentableUnits: Number(r.unrentable_units),
+    };
+    (byPortfolio[r.portfolio] ??= []).push(row);
+  }
+  return byPortfolio;
 }

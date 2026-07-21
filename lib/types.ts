@@ -38,11 +38,21 @@ export interface UnrentablePortfolioRow {
   availableUnits: number; // rentable − occupied (vacant AND sellable)
   unrentableUnits: number;
   occPct: number; // 0–100, occupied/total
-  unrentablePctOfUnits: number | null; // 0–100, unrentable/total
   unrentablePctOfAvailable: number | null; // unrentable/available — CAN exceed 100; null when available = 0
+  activeAuctions: number | null; // leases_enriched.is_in_auction, active leases; null = fetch failed (render "—", not 0)
   unrentableUnitsPrev: number | null;
-  unrentablePctOfUnitsPrev: number | null;
   unrentablePctOfAvailablePrev: number | null;
+}
+
+// One entry per pricing group currently holding unrentable units, for one portfolio — powers
+// the leaderboard's per-row expand. Pre-filtered (unrentable > 0) and pre-sorted worst-first
+// by the query itself; see lib/queries/unrentable.ts.
+export interface UnrentablePricingGroupRow {
+  pricingGroup: string;
+  totalUnits: number;
+  occupiedUnits: number;
+  availableUnits: number;
+  unrentableUnits: number;
 }
 
 export interface UnrentableSummary {
