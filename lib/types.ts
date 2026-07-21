@@ -29,6 +29,37 @@ export interface OccupancyTrendPoint {
   areaOccPct: number; // 0–100, occupied_sqft / total_sqft
 }
 
+// ── Unrentable units (latest snapshot; total = occupied + available + unrentable) ────
+// "Prev" fields = the latest snapshot on/before 30 days earlier (null before our data).
+export interface UnrentablePortfolioRow {
+  portfolio: string;
+  totalUnits: number;
+  occupiedUnits: number;
+  availableUnits: number; // rentable − occupied (vacant AND sellable)
+  unrentableUnits: number;
+  occPct: number; // 0–100, occupied/total
+  unrentablePctOfUnits: number | null; // 0–100, unrentable/total
+  unrentablePctOfVacant: number | null; // 0–100, unrentable/(available+unrentable)
+  unrentableUnitsPrev: number | null;
+  unrentablePctOfUnitsPrev: number | null;
+  unrentablePctOfVacantPrev: number | null;
+}
+
+export interface UnrentableSummary {
+  asOfDate: string | null;
+  totalUnits: number;
+  availableUnits: number;
+  unrentableUnits: number;
+  unrentablePctOfUnits: number | null;
+  unrentablePctOfVacant: number | null;
+  portfoliosAffected: number; // portfolios with unrentable > 0
+  prev: {
+    unrentableUnits: number | null;
+    unrentablePctOfUnits: number | null;
+    unrentablePctOfVacant: number | null;
+  };
+}
+
 export interface PortfolioLeaderRow {
   portfolio: string;
   occupiedUnits: number | null; // null for the Unmapped bucket
