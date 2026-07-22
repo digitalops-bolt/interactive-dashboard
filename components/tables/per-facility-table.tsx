@@ -21,6 +21,7 @@ type SortKey =
   | "facility"
   | "occPct"
   | "total"
+  | "available"
   | "unavailable"
   | "revenue"
   | "moveIns"
@@ -67,6 +68,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
   const totals = useMemo(() => {
     let occ = 0;
     let tot = 0;
+    let available = 0;
     let unavailable = 0;
     let revenue = 0;
     let moveIns = 0;
@@ -74,6 +76,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
     for (const r of rows) {
       if (r.occupied != null) occ += r.occupied;
       if (r.total != null) tot += r.total;
+      if (r.available != null) available += r.available;
       if (r.unavailable != null) unavailable += r.unavailable;
       if (r.revenue != null) revenue += r.revenue;
       moveIns += r.moveIns;
@@ -83,6 +86,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
       occPct: tot > 0 ? (occ / tot) * 100 : null,
       occ,
       tot,
+      available,
       unavailable,
       revenue,
       moveIns,
@@ -134,6 +138,7 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
             <SortHead label="Facility" sortKey="facility" align="left" />
             <SortHead label="Unit occ." sortKey="occPct" />
             <TableHead className="text-right">Units</TableHead>
+            <SortHead label="Available" sortKey="available" />
             <SortHead label="Unavail." sortKey="unavailable" />
             <SortHead label="Revenue" sortKey="revenue" />
             <SortHead label="Move-ins" sortKey="moveIns" />
@@ -151,6 +156,9 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
               </TableCell>
               <TableCell className="text-right tabular-nums text-muted-foreground">
                 {formatNumber(r.occupied)}/{formatNumber(r.total)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                {formatNumber(r.available)}
               </TableCell>
               <TableCell className="text-right tabular-nums text-muted-foreground">
                 {formatNumber(r.unavailable)}
@@ -177,6 +185,9 @@ export function PerFacilityTable({ rows }: { rows: FacilityRow[] }) {
             </TableCell>
             <TableCell className="text-right tabular-nums">
               {formatNumber(totals.occ)}/{formatNumber(totals.tot)}
+            </TableCell>
+            <TableCell className="text-right tabular-nums font-semibold">
+              {formatNumber(totals.available)}
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">
               {formatNumber(totals.unavailable)}
