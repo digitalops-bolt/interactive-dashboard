@@ -15,6 +15,21 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "dashboard-noauth",
+      "runtimeExecutable": "wsl",
+      "runtimeArgs": [
+        "-d",
+        "ubuntu-22.04",
+        "--cd",
+        "/home/pipesco93/bolt storage/interactive_dashboard",
+        "--",
+        "bash",
+        "-lc",
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= CLERK_SECRET_KEY= npx next dev -p 3003"
+      ],
+      "port": 3003
     }
   ]
 }

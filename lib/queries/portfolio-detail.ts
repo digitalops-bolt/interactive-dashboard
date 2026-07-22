@@ -71,6 +71,7 @@ export interface FacilityRow {
   occPct: number | null;
   occupied: number | null;
   total: number | null;
+  available: number | null;
   unavailable: number | null;
   revenue: number | null;
   moveIns: number;
@@ -434,6 +435,7 @@ export async function getPerFacilityBreakdown(
     facility: string;
     occupied: number | null;
     total: number | null;
+    available: number | null;
     unavailable: number | null;
     occ_pct: number | null;
     move_ins: number;
@@ -443,6 +445,7 @@ export async function getPerFacilityBreakdown(
     `WITH occ AS (
        SELECT facility_id, ANY_VALUE(facility_name) AS facility,
               SUM(occupied_units) AS occupied, SUM(total_units) AS total,
+              SUM(rentable_units) - SUM(occupied_units) AS available,
               SUM(unrentable_units) AS unavailable,
               ROUND(SUM(occupied_units)/SUM(total_units)*100, 1) AS occ_pct
        FROM \`${A}.occupancy_daily\`
@@ -462,7 +465,7 @@ export async function getPerFacilityBreakdown(
        WHERE portfolio = @p AND ${rangePredicate("payment_date", range)}
        GROUP BY facility_id
      )
-     SELECT occ.facility, occ.occupied, occ.total, occ.unavailable, occ.occ_pct,
+     SELECT occ.facility, occ.occupied, occ.total, occ.available, occ.unavailable, occ.occ_pct,
             COALESCE(flows.move_ins, 0) AS move_ins, COALESCE(flows.move_outs, 0) AS move_outs,
             rev.revenue
      FROM occ
@@ -470,7 +473,9 @@ export async function getPerFacilityBreakdown(
      LEFT JOIN rev USING (facility_id)
      ORDER BY occ.total DESC`,
     {
-      cacheKey: "pd-per-facility",
+      // v2: added `available` — bump the key so prod doesn't serve a pre-shape cached
+      // row (missing the field) for up to the 1h revalidate window after deploy.
+      cacheKey: "pd-per-facility-v2",
       keyParts: [portfolio, ...rangeKeyParts(range)],
       params: { p: portfolio, ...rangeParams(range) },
     },
@@ -480,6 +485,7 @@ export async function getPerFacilityBreakdown(
     occPct: r.occ_pct == null ? null : Number(r.occ_pct),
     occupied: r.occupied == null ? null : Number(r.occupied),
     total: r.total == null ? null : Number(r.total),
+    available: r.available == null ? null : Number(r.available),
     unavailable: r.unavailable == null ? null : Number(r.unavailable),
     revenue: r.revenue == null ? null : Number(r.revenue),
     moveIns: Number(r.move_ins),
