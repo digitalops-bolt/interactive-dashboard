@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronsUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -44,12 +44,18 @@ export function PricingGroupTable({
   facilities: string[];
   multiFacility: boolean;
 }) {
-  const [facility, setFacility] = useState<string>("all");
+  // Empty set = "all facilities" (no filter). Otherwise show only the selected ones —
+  // any number from one up to all of them.
+  const [selectedFacilities, setSelectedFacilities] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
   // Default to worst occupancy first so underperformers surface immediately.
   const [sortKey, setSortKey] = useState<SortKey>("occPct");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
 
-  const showFacilityColumn = multiFacility && facility === "all";
+  // Hide the per-row facility column only when exactly one facility is isolated —
+  // with 0 (all) or 2+ selected, rows mix facilities and need the label.
+  const showFacilityColumn = multiFacility && selectedFacilities.size !== 1;
 
   function toggle(key: SortKey) {
     if (key === sortKey) {
@@ -61,8 +67,11 @@ export function PricingGroupTable({
   }
 
   const filtered = useMemo(
-    () => (facility === "all" ? rows : rows.filter((r) => r.facility === facility)),
-    [rows, facility],
+    () =>
+      selectedFacilities.size === 0
+        ? rows
+        : rows.filter((r) => selectedFacilities.has(r.facility)),
+    [rows, selectedFacilities],
   );
 
   const sorted = useMemo(() => {
@@ -139,30 +148,19 @@ export function PricingGroupTable({
   return (
     <div className="space-y-3">
       {multiFacility && (
-        <label className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Facility
           </span>
-          <select
-            value={facility}
-            onChange={(e) => {
-              track("pricing_group_filtered", { facility: e.target.value });
-              setFacility(e.target.value);
-            }}
-            aria-label="Filter pricing groups by facility"
-            className="h-9 min-w-[200px] cursor-pointer rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="all">All facilities</option>
-            {facilities.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+          <FacilityMultiSelect
+            facilities={facilities}
+            selected={selectedFacilities}
+            onChange={setSelectedFacilities}
+          />
           <span className="text-xs text-muted-foreground">
             {sorted.length} {sorted.length === 1 ? "group" : "groups"}
           </span>
-        </label>
+        </div>
       )}
 
       <div className="overflow-x-auto rounded-md border">
@@ -232,6 +230,123 @@ export function PricingGroupTable({
           </TableFooter>
         </Table>
       </div>
+    </div>
+  );
+}
+
+/** Checkbox dropdown: pick zero (= all), one, or many facilities at once. */
+function FacilityMultiSelect({
+  facilities,
+  selected,
+  onChange,
+}: {
+  facilities: string[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  function toggleFacility(f: string) {
+    const next = new Set(selected);
+    if (next.has(f)) next.delete(f);
+    else next.add(f);
+    track("pricing_group_filtered", { facilities: Array.from(next) });
+    onChange(next);
+  }
+
+  function selectAll() {
+    track("pricing_group_filtered", { facilities: [] });
+    onChange(new Set());
+  }
+
+  const label =
+    selected.size === 0
+      ? "All facilities"
+      : selected.size === 1
+        ? Array.from(selected)[0]
+        : `${selected.size} facilities selected`;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Filter pricing groups by facility"
+        className="flex h-9 min-w-[200px] items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm font-medium text-foreground shadow-sm transition-colors hover:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <span className="truncate">{label}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          className="absolute z-10 mt-1 max-h-72 w-64 overflow-y-auto rounded-md border bg-popover p-1 shadow-md"
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={selected.size === 0}
+            onClick={selectAll}
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
+          >
+            <span
+              className={cn(
+                "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-input",
+                selected.size === 0 && "border-primary bg-primary text-primary-foreground",
+              )}
+            >
+              {selected.size === 0 && <Check className="h-3 w-3" />}
+            </span>
+            All facilities
+          </button>
+          <div className="my-1 border-t" />
+          {facilities.map((f) => {
+            const checked = selected.has(f);
+            return (
+              <button
+                key={f}
+                type="button"
+                role="option"
+                aria-selected={checked}
+                onClick={() => toggleFacility(f)}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
+              >
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-input",
+                    checked && "border-primary bg-primary text-primary-foreground",
+                  )}
+                >
+                  {checked && <Check className="h-3 w-3" />}
+                </span>
+                <span className="truncate">{f}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -378,7 +378,7 @@ export default async function PortfolioDetailPage({
           <CardDescription>
             Total / occupied / available / unavailable per pricing tier · latest snapshot ·
             sorted worst-occupancy first
-            {multiFacility ? " · filter by facility to drill in" : ""}
+            {multiFacility ? " · select one or more facilities to drill in" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
