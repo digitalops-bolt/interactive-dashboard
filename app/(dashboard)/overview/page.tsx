@@ -18,7 +18,7 @@ import {
   getPortfolioLeaderboard,
 } from "@/lib/queries/overview";
 import { getBriefing } from "@/lib/ai/briefing";
-import { getAdsByPortfolio } from "@/lib/queries/ads-overview";
+import { getAdsByPortfolio, getCompanyRentalConversions } from "@/lib/queries/ads-overview";
 import { getCurrentUser } from "@/lib/current-user";
 import { parseRangeSpec, prevPeriodLabel, rangeLabel } from "@/lib/metrics";
 import { AUTH_ENABLED } from "@/lib/auth";
@@ -57,13 +57,16 @@ export default async function OverviewPage({
     : searchParams?.portfolio;
   const activePortfolio = portfolioParam || "all";
 
-  const [kpis, trend, leaderboard, ads, briefing, user] = await Promise.all([
+  const [kpis, trend, leaderboard, ads, briefing, user, companyRentals] = await Promise.all([
     getOverviewKpis(range),
     getOccupancyTrend(activePortfolio),
     getPortfolioLeaderboard(range),
     getAdsByPortfolio(range),
     getBriefing(BRIEFING_RANGE),
     AUTH_ENABLED ? getCurrentUser() : Promise.resolve(null),
+    // Rentals-only (PURCHASE) conversions for the Ad-spend card. Defensive catch so a
+    // ConversionStats hiccup degrades just this figure, not the whole page.
+    getCompanyRentalConversions(range).catch(() => null),
   ]);
 
   // Role-based data gating (no-op until a role gets a portfolio allowlist in lib/roles.ts).
@@ -73,7 +76,6 @@ export default async function OverviewPage({
   // Company ad totals for the Ad-spend KPI card, on the SELECTED range (like the other cards).
   const companyAdSpend = ads.reduce((s, a) => s + a.spend, 0);
   const companyAdSpendPrev = ads.reduce((s, a) => s + a.spendPrevPeriod, 0);
-  const companyConversions = ads.reduce((s, a) => s + a.conversions, 0);
   const allowed = portfolioAccess(role);
   const visibleLeaderboard = allowed
     ? leaderboard.filter((r) => r.isUnmapped || allowed.includes(r.portfolio))
@@ -168,7 +170,11 @@ export default async function OverviewPage({
         <KpiCard
           title="Ad spend"
           value={formatCurrency(companyAdSpend)}
-          hint={`${formatNumber(companyConversions)} conv · ${label}`}
+          hint={
+            companyRentals == null
+              ? label
+              : `${formatNumber(companyRentals)} rentals · ${label}`
+          }
           higherIsBetter={false}
           comparisons={[
             {
