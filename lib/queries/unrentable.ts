@@ -177,6 +177,7 @@ export async function getUnrentablePricingGroupBreakdown(): Promise<
 > {
   const raw = await cachedQuery<{
     portfolio: string;
+    facility: string | null;
     pricing_group: string | null;
     total_units: number;
     occupied_units: number;
@@ -187,6 +188,7 @@ export async function getUnrentablePricingGroupBreakdown(): Promise<
        SELECT MAX(date) AS d FROM \`${A}.occupancy_daily\`
      )
      SELECT portfolio_name AS portfolio,
+            facility_name AS facility,
             pricing_group_name AS pricing_group,
             SUM(total_units) AS total_units,
             SUM(occupied_units) AS occupied_units,
@@ -194,15 +196,18 @@ export async function getUnrentablePricingGroupBreakdown(): Promise<
             SUM(unrentable_units) AS unrentable_units
      FROM \`${A}.occupancy_daily\`, latest
      WHERE date = latest.d
-     GROUP BY 1, 2
+     GROUP BY portfolio_name, facility_name, pricing_group_name
      HAVING unrentable_units > 0
-     ORDER BY 1, unrentable_units DESC`,
-    { cacheKey: "unrentable-pricing-groups" },
+     ORDER BY portfolio, facility, unrentable_units DESC`,
+    // v2: added the facility dimension (grouping is now portfolio × facility × pricing group),
+    // so bump the key — a pre-shape cached row would be missing `facility`.
+    { cacheKey: "unrentable-pricing-groups-v2" },
   );
 
   const byPortfolio: Record<string, UnrentablePricingGroupRow[]> = {};
   for (const r of raw) {
     const row: UnrentablePricingGroupRow = {
+      facility: r.facility ?? "—",
       pricingGroup: r.pricing_group ?? "Uncategorized",
       totalUnits: Number(r.total_units),
       occupiedUnits: Number(r.occupied_units),

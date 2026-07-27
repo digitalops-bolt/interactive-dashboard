@@ -172,8 +172,8 @@ export function UnrentableLeaderboard({
             <SortHead label="Portfolio" sortKey="portfolio" align="left" />
             <SortHead label="Unrentable" sortKey="unrentableUnits" />
             <SortHead label="Available" sortKey="availableUnits" />
-            <SortHead label="% of available" sortKey="unrentablePctOfAvailable" />
             <SortHead label="Active auctions" sortKey="activeAuctions" />
+            <SortHead label="% of available" sortKey="unrentablePctOfAvailable" />
             <SortHead label="Total units" sortKey="totalUnits" />
             <SortHead label="Occupied" sortKey="occupiedUnits" />
             <SortHead label="Unit occ." sortKey="occPct" />
@@ -223,6 +223,9 @@ export function UnrentableLeaderboard({
                   <TableCell className="text-right tabular-nums">
                     {formatNumber(r.availableUnits)}
                   </TableCell>
+                  <TableCell className="text-right tabular-nums font-medium">
+                    {r.activeAuctions == null ? "—" : formatNumber(r.activeAuctions)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       {r.unrentablePctOfAvailable == null ? (
@@ -239,9 +242,6 @@ export function UnrentableLeaderboard({
                         <TrendDelta delta={availD} higherIsBetter={false} divider />
                       ) : null}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    {r.activeAuctions == null ? "—" : formatNumber(r.activeAuctions)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {formatNumber(r.totalUnits)}
@@ -262,44 +262,10 @@ export function UnrentableLeaderboard({
                         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Unrentable by pricing group
                         </p>
-                        {breakdown.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            No pricing groups currently have unrentable units.
-                          </p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent">
-                                <TableHead>Pricing group</TableHead>
-                                <TableHead className="text-right">Unrentable</TableHead>
-                                <TableHead className="text-right">Available</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Occupied</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {breakdown.map((pg) => (
-                                <TableRow key={pg.pricingGroup}>
-                                  <TableCell className="font-medium">
-                                    {pg.pricingGroup}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums font-medium">
-                                    {formatNumber(pg.unrentableUnits)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums">
-                                    {formatNumber(pg.availableUnits)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                                    {formatNumber(pg.totalUnits)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                                    {formatNumber(pg.occupiedUnits)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
+                        <PricingGroupBreakdown
+                          breakdown={breakdown}
+                          portfolio={r.portfolio}
+                        />
                         <div className="mt-2 flex justify-end">
                           <Link
                             href={`/portfolios/${encodeURIComponent(r.portfolio)}`}
@@ -340,6 +306,9 @@ export function UnrentableLeaderboard({
             <TableCell className="text-right tabular-nums font-semibold">
               {formatNumber(totals.avail)}
             </TableCell>
+            <TableCell className="text-right tabular-nums font-semibold">
+              {totals.activeAuctions == null ? "—" : formatNumber(totals.activeAuctions)}
+            </TableCell>
             <TableCell className="text-right">
               {totals.pctOfAvailable == null ? (
                 "—"
@@ -351,9 +320,6 @@ export function UnrentableLeaderboard({
                   {formatPercent(totals.pctOfAvailable)}
                 </Badge>
               )}
-            </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold">
-              {totals.activeAuctions == null ? "—" : formatNumber(totals.activeAuctions)}
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">
               {formatNumber(totals.tot)}
@@ -374,5 +340,127 @@ export function UnrentableLeaderboard({
         </TableFooter>
       </Table>
     </div>
+  );
+}
+
+interface FacilityGroup {
+  facility: string;
+  rows: UnrentablePricingGroupRow[];
+  summary: {
+    unrentableUnits: number;
+    availableUnits: number;
+    totalUnits: number;
+    occupiedUnits: number;
+  };
+}
+
+// Group the (already unrentable-filtered) pricing-group rows by facility. The summary is the sum
+// of the rows shown for that facility (only tiers with unrentable units), so the tiers add up to
+// it. Facilities are ordered worst-first (most unrentable); rows within keep the query's order.
+function groupByFacility(rows: UnrentablePricingGroupRow[]): FacilityGroup[] {
+  const byFacility = new Map<string, UnrentablePricingGroupRow[]>();
+  for (const r of rows) {
+    const list = byFacility.get(r.facility) ?? [];
+    list.push(r);
+    byFacility.set(r.facility, list);
+  }
+  const groups = Array.from(byFacility.entries()).map(([facility, groupRows]) => ({
+    facility,
+    rows: groupRows,
+    summary: groupRows.reduce(
+      (acc, r) => ({
+        unrentableUnits: acc.unrentableUnits + r.unrentableUnits,
+        availableUnits: acc.availableUnits + r.availableUnits,
+        totalUnits: acc.totalUnits + r.totalUnits,
+        occupiedUnits: acc.occupiedUnits + r.occupiedUnits,
+      }),
+      { unrentableUnits: 0, availableUnits: 0, totalUnits: 0, occupiedUnits: 0 },
+    ),
+  }));
+  groups.sort((a, b) => b.summary.unrentableUnits - a.summary.unrentableUnits);
+  return groups;
+}
+
+function PgCells({ pg, bold }: { pg: UnrentablePricingGroupRow; bold?: boolean }) {
+  const strong = bold ? "font-semibold" : "font-medium";
+  const muted = bold ? "font-semibold" : "text-muted-foreground";
+  return (
+    <>
+      <TableCell className={cn("text-right tabular-nums", strong)}>
+        {formatNumber(pg.unrentableUnits)}
+      </TableCell>
+      <TableCell className={cn("text-right tabular-nums", bold ? "font-semibold" : undefined)}>
+        {formatNumber(pg.availableUnits)}
+      </TableCell>
+      <TableCell className={cn("text-right tabular-nums", muted)}>
+        {formatNumber(pg.totalUnits)}
+      </TableCell>
+      <TableCell className={cn("text-right tabular-nums", muted)}>
+        {formatNumber(pg.occupiedUnits)}
+      </TableCell>
+    </>
+  );
+}
+
+/**
+ * The per-portfolio expand contents. For a portfolio whose unrentable tiers span ≥2 facilities,
+ * group by facility — each facility gets a summary row (sum of its shown tiers) with its pricing
+ * groups nested beneath. Single-facility portfolios keep the plain pricing-group list.
+ */
+function PricingGroupBreakdown({
+  breakdown,
+  portfolio,
+}: {
+  breakdown: UnrentablePricingGroupRow[];
+  portfolio: string;
+}) {
+  if (breakdown.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No pricing groups currently have unrentable units.
+      </p>
+    );
+  }
+  const facilities = groupByFacility(breakdown);
+  const multiFacility = facilities.length >= 2;
+  // Facility names carry a "<portfolio> - " prefix; drop it (matches the portfolio-detail table).
+  const facilityLabel = (f: string) =>
+    f.startsWith(`${portfolio} - `) ? f.slice(portfolio.length + 3) : f;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>{multiFacility ? "Facility / pricing group" : "Pricing group"}</TableHead>
+          <TableHead className="text-right">Unrentable</TableHead>
+          <TableHead className="text-right">Available</TableHead>
+          <TableHead className="text-right">Total</TableHead>
+          <TableHead className="text-right">Occupied</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {multiFacility
+          ? facilities.map((f) => (
+              <Fragment key={f.facility}>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableCell className="font-semibold">{facilityLabel(f.facility)}</TableCell>
+                  <PgCells pg={{ ...f.summary, facility: f.facility, pricingGroup: "" }} bold />
+                </TableRow>
+                {f.rows.map((pg) => (
+                  <TableRow key={`${f.facility}|${pg.pricingGroup}`}>
+                    <TableCell className="pl-6 font-medium">{pg.pricingGroup}</TableCell>
+                    <PgCells pg={pg} />
+                  </TableRow>
+                ))}
+              </Fragment>
+            ))
+          : breakdown.map((pg) => (
+              <TableRow key={pg.pricingGroup}>
+                <TableCell className="font-medium">{pg.pricingGroup}</TableCell>
+                <PgCells pg={pg} />
+              </TableRow>
+            ))}
+      </TableBody>
+    </Table>
   );
 }
