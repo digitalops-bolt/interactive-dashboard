@@ -24,6 +24,7 @@ import {
   POSTHOG_ADMIN_CONFIGURED,
 } from "@/lib/posthog-admin";
 import { formatNumber } from "@/lib/format";
+import { RemoveUserButton } from "@/components/admin/remove-user-button";
 import { inviteUser, revokeInvite, setUserRole } from "./actions";
 
 export const runtime = "nodejs";
@@ -43,10 +44,9 @@ export default async function AdminPage({
   searchParams: { user?: string | string[] };
 }) {
   // The dashboard layout already blocks no-role users; this enforces admin-only.
-  if (AUTH_ENABLED) {
-    const me = await getCurrentUser();
-    if (getRole(me) !== "admin") redirect("/access-denied");
-  }
+  // Keep `me` in scope so the Users table can hide "Remove" on the admin's own row.
+  const me = AUTH_ENABLED ? await getCurrentUser() : null;
+  if (AUTH_ENABLED && getRole(me) !== "admin") redirect("/access-denied");
 
   if (!AUTH_ENABLED) {
     return (
@@ -223,22 +223,27 @@ export default async function AdminPage({
                         {fmtDate(u.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <form action={setUserRole} className="inline-flex items-center gap-1.5">
-                          <input type="hidden" name="userId" value={u.id} />
-                          <select name="role" defaultValue={role} className={roleSelectClass}>
-                            {ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {ROLE_LABELS[r]}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="submit"
-                            className="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted"
-                          >
-                            Save
-                          </button>
-                        </form>
+                        <div className="inline-flex items-center gap-2">
+                          <form action={setUserRole} className="inline-flex items-center gap-1.5">
+                            <input type="hidden" name="userId" value={u.id} />
+                            <select name="role" defaultValue={role} className={roleSelectClass}>
+                              {ROLES.map((r) => (
+                                <option key={r} value={r}>
+                                  {ROLE_LABELS[r]}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              className="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+                            >
+                              Save
+                            </button>
+                          </form>
+                          {me?.id !== u.id ? (
+                            <RemoveUserButton userId={u.id} email={email} />
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
