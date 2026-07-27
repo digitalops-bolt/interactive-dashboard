@@ -6,9 +6,11 @@ import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { getRole, ROLES, type Role } from "@/lib/roles";
 
 // Every action re-verifies the caller is an admin — a non-admin could POST directly.
+// Returns the admin's own user so actions can guard against self-targeting.
 async function assertAdmin() {
   const me = await currentUser();
   if (getRole(me) !== "admin") throw new Error("Not authorized");
+  return me;
 }
 
 function asRole(v: unknown): Role | null {
@@ -46,6 +48,24 @@ export async function inviteUser(formData: FormData) {
     });
   } catch {
     // Swallow duplicates / already-a-member; the pending list reflects the real state.
+  }
+  revalidatePath("/admin");
+}
+
+/**
+ * Permanently delete a user's Clerk account. They lose access immediately and must be re-invited
+ * to return (a clean way to reset a broken account). An admin can never delete themselves — that
+ * could lock out the last admin.
+ */
+export async function removeUser(formData: FormData) {
+  const me = await assertAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId || me?.id === userId) return;
+  const client = await clerkClient();
+  try {
+    await client.users.deleteUser(userId);
+  } catch {
+    // Already deleted / not found — ignore; the list reflects the real state after revalidate.
   }
   revalidatePath("/admin");
 }
