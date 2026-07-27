@@ -440,9 +440,15 @@ function PricingGroupBreakdown({
       </TableHeader>
       <TableBody>
         {multiFacility
-          ? facilities.map((f) => (
+          ? facilities.map((f, fi) => (
               <Fragment key={f.facility}>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableRow
+                  className={cn(
+                    "bg-muted/70 hover:bg-muted/70",
+                    // Thicker top rule to break each facility off from the one above it.
+                    fi > 0 && "border-t-2 border-border",
+                  )}
+                >
                   <TableCell className="font-semibold">{facilityLabel(f.facility)}</TableCell>
                   <PgCells pg={{ ...f.summary, facility: f.facility, pricingGroup: "" }} bold />
                 </TableRow>
