@@ -48,6 +48,7 @@ export interface UnrentablePortfolioRow {
 // the leaderboard's per-row expand. Pre-filtered (unrentable > 0) and pre-sorted worst-first
 // by the query itself; see lib/queries/unrentable.ts.
 export interface UnrentablePricingGroupRow {
+  facility: string;
   pricingGroup: string;
   totalUnits: number;
   occupiedUnits: number;
