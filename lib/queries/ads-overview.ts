@@ -82,3 +82,39 @@ export async function getAdsByPortfolio(
       clicksPrevPeriod: Number(r.clicks_pp ?? 0),
     }));
 }
+
+/**
+ * Company-wide count of *rental* ad conversions for the selected window — only conversions whose
+ * action category is PURCHASE (the same "Real rentals only" definition the portfolio-detail
+ * marketing card uses), so phone-call leads and other actions are excluded. This is a separate,
+ * narrower number than getAdsByPortfolio's `conversions` (which is the all-actions total from
+ * BasicStats and feeds the briefing/decision-tree/CPA — left untouched on purpose). It must read
+ * the action-split ConversionStats table, since BasicStats can't be filtered by action. Portfolio
+ * attribution reuses the label map so the scope matches the Ad-spend total. Reads bolt_g_ads_data —
+ * callers handle a thrown permission error. 'PURCHASE' is a fixed code constant, not user input.
+ */
+export async function getCompanyRentalConversions(range: RangeSpec): Promise<number> {
+  const curPred = comparisonPredicate("c.segments_date", range, "current");
+  const rows = await cachedQuery<{ rentals: number | null }>(
+    `WITH labels AS (
+       SELECT campaign_id, ${labelToPortfolioCase("label_name")} AS portfolio
+       FROM \`${ADS}.ads_CampaignLabel_2921271203\`
+       WHERE _DATA_DATE = _LATEST_DATE AND label_name NOT LIKE 'Paused%'
+     ),
+     camp_portfolio AS (
+       SELECT campaign_id, ANY_VALUE(portfolio) AS portfolio FROM labels GROUP BY campaign_id
+     )
+     SELECT ROUND(SUM(c.metrics_conversions), 1) AS rentals
+     FROM \`${ADS}.p_ads_CampaignConversionStats_2921271203\` c
+     JOIN camp_portfolio cp ON c.campaign_id = cp.campaign_id
+     WHERE cp.portfolio IS NOT NULL
+       AND c.segments_conversion_action_category = 'PURCHASE'
+       AND ${curPred}`,
+    {
+      cacheKey: "ads-company-rentals",
+      keyParts: rangeKeyParts(range),
+      params: rangeParams(range),
+    },
+  );
+  return Number(rows[0]?.rentals ?? 0);
+}
