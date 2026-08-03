@@ -82,7 +82,7 @@ export default async function OverviewPage({
     : leaderboard;
 
   const portfolioOptions = visibleLeaderboard
-    .filter((r) => !r.isUnmapped)
+    .filter((r) => !r.isUnmapped && r.portfolio != null)
     .map((r) => r.portfolio)
     .sort((a, b) => a.localeCompare(b));
   const portfolioCount = portfolioOptions.length;

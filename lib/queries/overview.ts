@@ -184,7 +184,7 @@ export async function getPortfolioLeaderboard(
     revenue_pp: number | null;
   }>(
     `WITH occ AS (
-       SELECT portfolio_name AS portfolio,
+       SELECT COALESCE(portfolio_name, '${UNMAPPED_PORTFOLIO}') AS portfolio,
               SUM(occupied_units) AS occupied_units,
               SUM(total_units) AS total_units,
               ROUND(SUM(occupied_units)/SUM(total_units) * 100, 1) AS occ_pct
@@ -224,7 +224,7 @@ export async function getPortfolioLeaderboard(
        GROUP BY 1
      ),
      occ_py AS (
-       SELECT portfolio_name AS portfolio,
+       SELECT COALESCE(portfolio_name, '${UNMAPPED_PORTFOLIO}') AS portfolio,
               ROUND(SUM(occupied_units)/SUM(total_units) * 100, 1) AS occ_pct,
               SUM(occupied_units) AS occupied_units,
               SUM(total_units) AS total_units
@@ -233,7 +233,7 @@ export async function getPortfolioLeaderboard(
        GROUP BY 1
      ),
      occ_pp AS (
-       SELECT portfolio_name AS portfolio,
+       SELECT COALESCE(portfolio_name, '${UNMAPPED_PORTFOLIO}') AS portfolio,
               ROUND(SUM(occupied_units)/SUM(total_units) * 100, 1) AS occ_pct
        FROM \`${A}.occupancy_daily\`
        WHERE date = (SELECT MAX(date) FROM \`${A}.occupancy_daily\` WHERE date <= ${ppAnchor})
@@ -271,7 +271,10 @@ export async function getPortfolioLeaderboard(
      LEFT JOIN rev_pp ON rev_pp.portfolio = COALESCE(occ.portfolio, mtd.portfolio, rev.portfolio)
      ORDER BY occ.occ_pct DESC NULLS LAST, move_ins DESC`,
     {
-      cacheKey: "overview-portfolio-leaderboard",
+      // v2: occupancy CTEs now COALESCE a null portfolio_name to Unmapped (a mapping gap on some
+      // past snapshots, e.g. 2026-07-31, otherwise produced a null-portfolio row that crashed the
+      // page). Bumped so prod doesn't serve the pre-fix cached result for the 1h revalidate window.
+      cacheKey: "overview-portfolio-leaderboard-v2",
       keyParts: rangeKeyParts(range),
       params: rangeParams(range),
     },
