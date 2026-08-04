@@ -76,7 +76,11 @@ export async function getOverviewKpis(range: RangeSpec): Promise<OverviewKpis> {
        ${flowSub("move_ins", "prevYear", pyStart)} AS py_move_ins,
        ${flowSub("move_outs", "prevYear", pyStart)} AS py_move_outs,
        ${occAt(pyAnchor)} AS py_occ`,
-    { cacheKey: "overview-kpis", keyParts: rangeKeyParts(range), params: rangeParams(range) },
+    // v2: bust the cache. A sync lag published occupancy through Aug-3 while payments_daily /
+    // facility_daily still had no August rows, so this query cached revenue/moves = $0 for the
+    // current month. Data has since loaded; a fresh key forces prod to re-pull instead of serving
+    // the empty result until the 1h revalidate.
+    { cacheKey: "overview-kpis-v2", keyParts: rangeKeyParts(range), params: rangeParams(range) },
   );
   const r = rows[0] ?? {};
   const moveIns = Number(r.move_ins ?? 0);
@@ -273,8 +277,9 @@ export async function getPortfolioLeaderboard(
     {
       // v2: occupancy CTEs now COALESCE a null portfolio_name to Unmapped (a mapping gap on some
       // past snapshots, e.g. 2026-07-31, otherwise produced a null-portfolio row that crashed the
-      // page). Bumped so prod doesn't serve the pre-fix cached result for the 1h revalidate window.
-      cacheKey: "overview-portfolio-leaderboard-v2",
+      // page). v3: same sync lag cached $0 flows/revenue for the current month — bust it so prod
+      // re-pulls the now-loaded data instead of serving the empty result until the 1h revalidate.
+      cacheKey: "overview-portfolio-leaderboard-v3",
       keyParts: rangeKeyParts(range),
       params: rangeParams(range),
     },
