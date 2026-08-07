@@ -30,6 +30,9 @@ export function TrendDelta({
           className,
         )}
       >
+        {divider ? (
+          <span className="mr-1 h-3 w-px shrink-0 bg-border" aria-hidden />
+        ) : null}
         —{label ? <span>{label}</span> : null}
       </span>
     );

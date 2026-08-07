@@ -218,11 +218,13 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
                     {r.occPct == null ? (
                       <span className="text-muted-foreground">—</span>
                     ) : (
-                      <Badge variant="secondary" className={occToneClass(r.occPct)}>
-                        {formatPercent(r.occPct)}
-                      </Badge>
+                      <>
+                        <Badge variant="secondary" className={occToneClass(r.occPct)}>
+                          {formatPercent(r.occPct)}
+                        </Badge>
+                        <TrendDelta delta={occD} divider className="w-[4.75rem] shrink-0" />
+                      </>
                     )}
-                    {occD ? <TrendDelta delta={occD} divider /> : null}
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
@@ -233,13 +235,15 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
                 <TableCell className="text-right tabular-nums">
                   <div className="flex items-center justify-end gap-1.5">
                     {formatCurrency(r.revenue, { compact: true })}
-                    {revD ? <TrendDelta delta={revD} divider /> : null}
+                    {r.revenue == null ? null : (
+                      <TrendDelta delta={revD} divider className="w-[4.75rem] shrink-0" />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   <div className="flex items-center justify-end gap-1.5">
                     {formatNumber(r.moveIns)}
-                    {miD ? <TrendDelta delta={miD} divider /> : null}
+                    <TrendDelta delta={miD} divider className="w-[3.5rem] shrink-0" />
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
@@ -254,7 +258,7 @@ export function PortfolioLeaderboard({ rows }: { rows: PortfolioLeaderRow[] }) {
                 >
                   <div className="flex items-center justify-end gap-1.5">
                     {formatSignedNumber(r.netRentals)}
-                    {netD ? <TrendDelta delta={netD} divider /> : null}
+                    <TrendDelta delta={netD} divider className="w-[3.5rem] shrink-0" />
                   </div>
                 </TableCell>
               </TableRow>
